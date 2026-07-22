@@ -132,7 +132,6 @@
             </div>
 
             <div id="ocr-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-2">
-                <!-- 【改善】muted属性を追加し、インライン再生をより確実に -->
                 <video id="ocr-video" autoplay playsinline muted></video>
                 <button onclick="captureOCR()" class="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-1.5 rounded-full text-sm font-bold shadow-lg border-2 border-white">
                     Capture
@@ -500,7 +499,6 @@
             }
 
             try {
-                // 【改善】高解像度(Full HD)を要求するように変更
                 ocrStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: 'environment',
@@ -583,7 +581,15 @@
         let isBarcodeScanning = false;
 
         window.addEventListener('DOMContentLoaded', () => {
-            html5QrCode = new Html5Qrcode("barcode-reader");
+            // 【改善】読み取るバーコードの規格を制限（無関係な2次元コードによる文字化けを防止）
+            html5QrCode = new Html5Qrcode("barcode-reader", {
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.UPC_A
+                ]
+            });
         });
 
         function toggleBarcodeCamera() {
