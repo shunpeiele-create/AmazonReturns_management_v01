@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Returns Management Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        /* モバイル向けに入力枠やフォントを微調整 */
+        input, select, button {
+            font-size: 16px; /* iOS Safariでの自動ズームを防止 */
+        }
+        .table-input {
+            width: 100%;
+            background-color: transparent;
+            border: 1px solid transparent;
+            padding: 2px 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .table-input:hover, .table-input:focus {
+            background-color: white;
+            border-color: #cbd5e1;
+            outline: none;
+        }
+        .table-checkbox {
+            width: 1.25rem;
+            height: 1.25rem;
+            cursor: pointer;
+        }
+        #barcode-reader video, #ocr-video {
+            width: 100% !important;
+            max-height: 40vh;
+            object-fit: cover;
+            border-radius: 0.25rem;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans pb-10">
+
+    <!-- 画像拡大表示用モーダル -->
+    <div id="image-modal" class="hidden fixed inset-0 z-50 bg-black/90 flex justify-center items-center p-2" onclick="closeModal('image-modal')">
+        <div class="relative max-w-full max-h-full">
+            <button onclick="closeModal('image-modal')" class="absolute -top-3 -right-3 bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg cursor-pointer">&times;</button>
+            <img id="modal-image" class="max-w-full max-h-[90vh] object-contain rounded shadow-lg" src="">
+        </div>
+    </div>
+
+    <!-- ASINマスター設定用モーダル -->
+    <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-4 relative">
+            <button onclick="closeModal('settings-modal')" class="absolute top-3 right-3 text-slate-400 hover:text-slate-800 font-bold text-xl">&times;</button>
+            <h2 class="text-lg font-bold mb-3">ASIN Master</h2>
+            
+            <div class="flex gap-2 mb-3 border-b pb-3">
+                <input type="text" id="set-asin" placeholder="ASIN (e.g. B0F...)" class="border rounded px-2 py-1.5 w-1/2 text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase">
+                <input type="text" id="set-sku" placeholder="SKU" class="border rounded px-2 py-1.5 w-1/2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                <button onclick="addAsinMaster()" class="bg-blue-600 text-white px-3 py-1.5 rounded shadow hover:bg-blue-700 font-bold">+</button>
+            </div>
+            
+            <div class="max-h-60 overflow-y-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-100 text-slate-600 sticky top-0">
+                        <tr>
+                            <th class="px-2 py-2">ASIN</th>
+                            <th class="px-2 py-2">SKU</th>
+                            <th class="px-2 py-2 text-right">Del</th>
+                        </tr>
+                    </thead>
+                    <tbody id="asin-master-list" class="divide-y divide-slate-200">
+                        <!-- JSで描画 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 【改善】超コンパクトヘッダー（スクロール追従） -->
+    <header class="bg-white p-2 shadow-sm border-b border-slate-200 flex justify-between items-center sticky top-0 z-40">
+        <h1 class="text-base font-bold text-slate-900 leading-tight">Returns<br>Manager</h1>
+        <div class="flex gap-2">
+            <button onclick="openSettings()" class="bg-slate-100 text-slate-600 p-2 rounded shadow-sm border border-slate-200" title="Settings">⚙️</button>
+            <label class="cursor-pointer bg-slate-100 text-slate-600 p-2 rounded shadow-sm border border-slate-200 flex items-center justify-center" title="Import Excel">
+                📥
+                <input type="file" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
+            </label>
+            <button onclick="exportToExcel()" class="bg-emerald-100 text-emerald-700 p-2 rounded shadow-sm border border-emerald-200" title="Export Excel">📤</button>
+        </div>
+    </header>
+
+    <datalist id="condition-options">
+        <option value="New"></option>
+        <option value="Like New"></option>
+        <option value="Good"></option>
+        <option value="Acceptable"></option>
+        <option value="Damaged"></option>
+        <option value="Defective"></option>
+    </datalist>
+
+    <!-- 【改善】メインコンテンツエリア：余白を極小化 -->
+    <div class="max-w-3xl mx-auto space-y-2 p-2">
+        
+        <!-- Scanners Area -->
+        <div class="bg-white p-2.5 rounded-lg shadow-sm border border-slate-200">
+            <div class="grid grid-cols-2 gap-2">
+                <!-- Slip OCR Controls -->
+                <div class="flex flex-col gap-1">
+                    <div class="text-[10px] font-bold text-blue-600 flex justify-between">
+                        <span>Slip OCR</span>
+                        <span id="ocr-loading" class="hidden animate-pulse text-red-500">Processing...</span>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="startOCRCamera()" id="btn-ocr-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">📷</button>
+                        <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">
+                            🖼️<input type="file" accept="image/*" class="hidden" onchange="processOCRUpload(event)">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- LPN Scanner Controls -->
+                <div class="flex flex-col gap-1">
+                    <span class="text-[10px] font-bold text-indigo-600">LPN Scan</span>
+                    <div class="flex gap-1">
+                        <button onclick="toggleBarcodeCamera()" id="btn-barcode-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">📷</button>
+                        <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">
+                            🖼️<input type="file" accept="image/*" class="hidden" onchange="processBarcodeUpload(event)">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OCR Camera/Preview Container -->
+            <div id="ocr-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-2">
+                <video id="ocr-video" autoplay playsinline></video>
+                <button onclick="captureOCR()" class="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-1.5 rounded-full text-sm font-bold shadow-lg border-2 border-white">
+                    Capture
+                </button>
+            </div>
+            <canvas id="ocr-canvas" class="hidden"></canvas>
+            <div id="ocr-preview-container" class="hidden mt-2 border rounded bg-slate-50 p-1 text-center">
+                <img id="ocr-preview" class="max-h-24 mx-auto rounded cursor-pointer" src="" onclick="openImageModal(this.src)" title="Tap to enlarge">
+            </div>
+
+            <!-- Barcode Camera Container -->
+            <div id="scanner-target-alert" class="hidden bg-yellow-100 border border-yellow-300 text-yellow-800 text-[10px] px-2 py-1 rounded mt-2 font-bold flex justify-between items-center">
+                <span class="animate-pulse">List Row Scan Mode...</span>
+                <button onclick="cancelRowScan()" class="text-yellow-600 underline">Cancel</button>
+            </div>
+            <div id="barcode-reader-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-2">
+                <div id="barcode-reader" class="w-full"></div>
+            </div>
+        </div>
+
+        <!-- 【改善】Manual Input Form (超高密度グリッド) -->
+        <div class="bg-white p-2.5 rounded-lg shadow-sm border border-slate-200">
+            <div id="manual-input-area" class="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Shipment ID</label>
+                    <input type="text" id="in-shipment" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">VRET ID</label>
+                    <input type="text" id="in-vret" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                </div>
+                
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Date</label>
+                    <input type="date" id="in-date" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">ASIN</label>
+                    <input type="text" id="in-asin" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none" onchange="lookupASIN(this.value)">
+                </div>
+
+                <div class="col-span-2">
+                    <label class="block text-[10px] font-bold text-blue-600 mb-0.5">LPN #</label>
+                    <input type="text" id="in-lpn" class="w-full border-2 border-blue-300 rounded px-2 py-1.5 text-sm font-bold bg-blue-50 focus:bg-white outline-none shadow-inner">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">SKU</label>
+                    <input type="text" id="in-sku" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">S/N</label>
+                    <input type="text" id="in-sn" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Reason</label>
+                    <input type="text" id="in-reason" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Condition</label>
+                    <input type="text" id="in-condition" list="condition-options" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                </div>
+                
+                <div class="col-span-2">
+                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Comments</label>
+                    <input type="text" id="in-comments" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                </div>
+            </div>
+
+            <!-- 【改善】アクション行（Qty, Checkbox, Buttons）を1行に凝縮 -->
+            <div class="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100">
+                <div class="w-16">
+                    <label class="block text-[10px] font-bold text-slate-700 mb-0.5 text-center">Qty</label>
+                    <input type="number" id="in-qty" value="1" min="1" class="w-full border-2 border-slate-300 rounded px-1 py-1 font-bold text-center text-sm outline-none">
+                </div>
+                
+                <div class="flex flex-col items-center justify-center flex-shrink-0 w-12">
+                    <label class="block text-[9px] font-bold text-slate-700 mb-0.5 text-center leading-tight">Refurb</label>
+                    <input type="checkbox" id="in-refurbishable" checked class="w-5 h-5 rounded border-gray-300 text-blue-600">
+                </div>
+                
+                <button onclick="addToList()" class="flex-1 bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 font-bold text-sm h-10 flex items-center justify-center">
+                    Add
+                </button>
+                <button onclick="clearForm()" class="bg-slate-200 text-slate-700 rounded shadow-sm hover:bg-slate-300 font-bold text-sm h-10 w-12 flex items-center justify-center">
+                    Clr
+                </button>
+            </div>
+        </div>
+
+        <!-- Management List Section -->
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <span id="record-count" class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-full">Total: 0</span>
+                
+                <div class="flex items-center gap-1 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-200">
+                    <label class="text-[10px] font-bold text-slate-500">Zoom:</label>
+                    <input type="range" id="table-zoom-slider" min="50" max="150" value="100" class="w-16 h-1 bg-slate-200 rounded-lg appearance-none" oninput="changeTableZoom(this.value)">
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table id="data-table" class="w-full text-left text-xs whitespace-nowrap transform-origin-top-left transition-all duration-200">
+                    <thead class="bg-slate-100 text-slate-600 uppercase font-bold border-b">
+                        <tr>
+                            <th class="px-2 py-2 min-w-[30px]">No</th>
+                            <th class="px-2 py-2 min-w-[110px]">Entry Date</th>
+                            <th class="px-2 py-2 min-w-[120px]">Shipment ID</th>
+                            <th class="px-2 py-2 min-w-[120px]">VRET ID</th>
+                            <th class="px-2 py-2 min-w-[160px]">LPN #</th>
+                            <th class="px-2 py-2 min-w-[110px]">Process Date</th>
+                            <th class="px-2 py-2 min-w-[100px]">Reason</th>
+                            <th class="px-2 py-2 min-w-[110px]">ASIN</th>
+                            <th class="px-2 py-2 min-w-[120px]">SKU</th>
+                            <th class="px-2 py-2 min-w-[130px]">S/N</th>
+                            <th class="px-2 py-2 min-w-[110px]">Condition</th>
+                            <th class="px-2 py-2 min-w-[150px]">Comments</th>
+                            <th class="px-2 py-2 min-w-[80px] text-center">Refurb</th>
+                            <th class="px-2 py-2 min-w-[80px] text-center">Act</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700">
+                        <!-- Rows -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="empty-state" class="p-6 text-center text-xs text-slate-400 font-bold">
+                No records yet.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- ASIN -> SKU Master Dictionary (Local Storage) ---
+        let asinToSkuMaster = JSON.parse(localStorage.getItem('asinMaster')) || {
+            "B0FYC9YC3M": "M-HT1DRBK"
+        };
+
+        function saveAsinMaster() {
+            localStorage.setItem('asinMaster', JSON.stringify(asinToSkuMaster));
+            renderSettingsList();
+        }
+
+        function lookupASIN(asin) {
+            const upperAsin = asin.toUpperCase();
+            if (asinToSkuMaster[upperAsin]) {
+                document.getElementById('in-sku').value = asinToSkuMaster[upperAsin];
+            }
+        }
+
+        // --- State Management & Local Storage ---
+        let records = JSON.parse(localStorage.getItem('returnRecords')) || [];
+        let recordIdCounter = records.length > 0 ? Math.max(...records.map(r => r.id)) + 1 : 1; 
+        let scanTargetRowId = null;
+
+        function saveRecords() {
+            localStorage.setItem('returnRecords', JSON.stringify(records));
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderTable();
+            document.getElementById('manual-input-area').addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    addToList();
+                }
+            });
+        });
+
+        function changeTableZoom(value) {
+            document.getElementById('data-table').style.zoom = value / 100;
+        }
+
+        function openImageModal(src) {
+            document.getElementById('modal-image').src = src;
+            document.getElementById('image-modal').classList.remove('hidden');
+        }
+        
+        function openSettings() {
+            renderSettingsList();
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function renderSettingsList() {
+            const tbody = document.getElementById('asin-master-list');
+            tbody.innerHTML = Object.keys(asinToSkuMaster).map(asin => `
+                <tr>
+                    <td class="px-2 py-1 font-mono">${asin}</td>
+                    <td class="px-2 py-1">${asinToSkuMaster[asin]}</td>
+                    <td class="px-2 py-1 text-right">
+                        <button onclick="deleteAsinMaster('${asin}')" class="text-red-500 font-bold text-lg leading-none">&times;</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function addAsinMaster() {
+            const asin = document.getElementById('set-asin').value.trim().toUpperCase();
+            const sku = document.getElementById('set-sku').value.trim();
+            if (asin && sku) {
+                asinToSkuMaster[asin] = sku;
+                saveAsinMaster();
+                document.getElementById('set-asin').value = '';
+                document.getElementById('set-sku').value = '';
+            }
+        }
+
+        function deleteAsinMaster(asin) {
+            delete asinToSkuMaster[asin];
+            saveAsinMaster();
+        }
+
+        function prepareRowScan(rowId) {
+            scanTargetRowId = rowId;
+            document.getElementById('scanner-target-alert').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        }
+
+        function cancelRowScan() {
+            scanTargetRowId = null;
+            document.getElementById('scanner-target-alert').classList.add('hidden');
+        }
+
+        // --- Core Functions ---
+        function addToList() {
+            const qty = parseInt(document.getElementById('in-qty').value) || 1;
+            const today = new Date().toISOString().split('T')[0];
+            const newLpn = document.getElementById('in-lpn').value.trim();
+            const isRefurbishable = document.getElementById('in-refurbishable').checked;
+
+            if (newLpn) {
+                const isDuplicate = records.some(r => r.lpn === newLpn);
+                if (isDuplicate) {
+                    if (!confirm(`Warning: LPN [${newLpn}] already exists.\nAdd anyway?`)) {
+                        return;
+                    }
+                }
+            }
+
+            const baseData = {
+                shipmentId: document.getElementById('in-shipment').value,
+                vretId: document.getElementById('in-vret').value,
+                lpn: newLpn,
+                processDate: document.getElementById('in-date').value,
+                reason: document.getElementById('in-reason').value,
+                asin: document.getElementById('in-asin').value.toUpperCase(),
+                sku: document.getElementById('in-sku').value,
+                sn: document.getElementById('in-sn').value,
+                condition: document.getElementById('in-condition').value,
+                comments: document.getElementById('in-comments').value
+            };
+
+            for (let i = 0; i < qty; i++) {
+                records.push({
+                    id: recordIdCounter++,
+                    entryDate: today,
+                    ...baseData,
+                    qty: 1,
+                    refurbishable: isRefurbishable
+                });
+            }
+
+            renderTable();
+            saveRecords(); 
+            
+            // Clear LPN & S/N, reset Qty
+            document.getElementById('in-lpn').value = '';
+            document.getElementById('in-sn').value = '';
+            document.getElementById('in-qty').value = '1';
+        }
+
+        function clearForm() {
+            ['in-shipment', 'in-vret', 'in-date', 'in-asin', 'in-lpn', 'in-reason', 'in-sku', 'in-sn', 'in-condition', 'in-comments'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('in-qty').value = '1';
+            document.getElementById('in-refurbishable').checked = true;
+        }
+
+        function updateRecord(id, field, value) {
+            const record = records.find(r => r.id === id);
+            if (record) {
+                record[field] = field === 'refurbishable' ? value : value;
+                saveRecords(); 
+            }
+        }
+
+        function deleteRecord(id) {
+            if(confirm("Delete this record?")) {
+                records = records.filter(r => r.id !== id);
+                renderTable();
+                saveRecords(); 
+            }
+        }
+
+        function copyRow(id) {
+            const record = records.find(r => r.id === id);
+            if (record) {
+                records.push({
+                    ...record,
+                    id: recordIdCounter++
+                });
+                renderTable();
+                saveRecords(); 
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('table-body');
+            const emptyState = document.getElementById('empty-state');
+            document.getElementById('record-count').innerText = `Total: ${records.length}`;
+
+            if (records.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            
+            tbody.innerHTML = records.map((r, index) => `
+                <tr class="hover:bg-blue-50 transition-colors">
+                    <td class="px-2 py-1 text-slate-500 font-bold">${index + 1}</td>
+                    <td class="px-2 py-1"><input type="date" value="${r.entryDate}" class="table-input" onchange="updateRecord(${r.id}, 'entryDate', this.value)"></td>
+                    <td class="px-2 py-1"><input type="text" value="${r.shipmentId}" class="table-input" onchange="updateRecord(${r.id}, 'shipmentId', this.value)"></td>
+                    <td class="px-2 py-1"><input type="text" value="${r.vretId}" class="table-input" onchange="updateRecord(${r.id}, 'vretId', this.value)"></td>
+                    
+                    <td class="px-2 py-1 flex items-center gap-1">
+                        <input type="text" value="${r.lpn}" class="table-input text-blue-600 font-bold w-full" onchange="updateRecord(${r.id}, 'lpn', this.value)">
+                        <button onclick="prepareRowScan(${r.id})" class="text-slate-400 hover:text-blue-600 bg-white border px-1.5 py-0.5 rounded shadow-sm text-xs" title="Scan LPN directly">📷</button>
+                    </td>
+
+                    <td class="px-2 py-1"><input type="date" value="${r.processDate}" class="table-input" onchange="updateRecord(${r.id}, 'processDate', this.value)"></td>
+                    <td class="px-2 py-1"><input type="text" value="${r.reason}" class="table-input" onchange="updateRecord(${r.id}, 'reason', this.value)"></td>
+                    <td class="px-2 py-1"><input type="text" value="${r.asin}" class="table-input font-mono" onchange="updateRecord(${r.id}, 'asin', this.value)"></td>
+                    <td class="px-2 py-1"><input type="text" value="${r.sku}" class="table-input font-bold" onchange="updateRecord(${r.id}, 'sku', this.value)"></td>
+                    <td class="px-2 py-1"><input type="text" value="${r.sn}" class="table-input font-mono" onchange="updateRecord(${r.id}, 'sn', this.value)"></td>
+                    <td class="px-2 py-1"><input type="text" list="condition-options" value="${r.condition}" class="table-input" onchange="updateRecord(${r.id}, 'condition', this.value)"></td>
+                    <td class="px-2 py-1"><input type="text" value="${r.comments}" class="table-input" onchange="updateRecord(${r.id}, 'comments', this.value)"></td>
+                    <td class="px-2 py-1 text-center">
+                        <input type="checkbox" class="table-checkbox mx-auto" ${r.refurbishable ? 'checked' : ''} onchange="updateRecord(${r.id}, 'refurbishable', this.checked)">
+                    </td>
+                    <td class="px-2 py-1 text-center flex justify-center gap-1">
+                        <button onclick="copyRow(${r.id})" class="text-blue-500 bg-white border p-1 rounded shadow-sm" title="Duplicate">📋</button>
+                        <button onclick="deleteRecord(${r.id})" class="text-red-500 bg-white border p-1 rounded shadow-sm" title="Delete">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // --- OCR Logic ---
+        let ocrStream = null;
+
+        async function startOCRCamera() {
+            const video = document.getElementById('ocr-video');
+            const container = document.getElementById('ocr-video-container');
+            const btn = document.getElementById('btn-ocr-cam');
+            
+            if (ocrStream) {
+                ocrStream.getTracks().forEach(track => track.stop());
+                ocrStream = null;
+                container.classList.add('hidden');
+                btn.innerHTML = "📷";
+                return;
+            }
+
+            try {
+                ocrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = ocrStream;
+                container.classList.remove('hidden');
+                btn.innerHTML = "🛑";
+            } catch (err) {
+                alert("Camera access denied.");
+            }
+        }
+
+        function captureOCR() {
+            const video = document.getElementById('ocr-video');
+            const canvas = document.getElementById('ocr-canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            startOCRCamera(); 
+            executeOCR(canvas.toDataURL('image/jpeg'));
+        }
+
+        function processOCRUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => executeOCR(e.target.result);
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+        
+        function parseDateToYMD(dateStr) {
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+            return "";
+        }
+
+        function executeOCR(imageSrc) {
+            document.getElementById('ocr-preview').src = imageSrc;
+            document.getElementById('ocr-preview-container').classList.remove('hidden');
+            document.getElementById('ocr-loading').classList.remove('hidden');
+            
+            Tesseract.recognize(imageSrc, 'eng').then(({ data: { text } }) => {
+                document.getElementById('ocr-loading').classList.add('hidden');
+                
+                const patterns = {
+                    shipment: /Shipment\s*ID[:\s]*(\d+)/i,
+                    vret: /VRET\s*ID[:\s]*([A-Z0-9]+)/i,
+                    date: /(?:Process\s*Date|Process\s*date)[:\s]*([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i,
+                    asin: /\b(B[A-Z0-9]{9})\b/i 
+                };
+
+                const matchShipment = text.match(patterns.shipment);
+                if(matchShipment) document.getElementById('in-shipment').value = matchShipment[1];
+
+                const matchVret = text.match(patterns.vret);
+                if(matchVret) document.getElementById('in-vret').value = matchVret[1];
+
+                const matchDate = text.match(patterns.date);
+                if(matchDate) document.getElementById('in-date').value = parseDateToYMD(matchDate[1]);
+
+                const matchAsin = text.match(patterns.asin);
+                if(matchAsin) {
+                    const foundAsin = matchAsin[1].toUpperCase();
+                    document.getElementById('in-asin').value = foundAsin;
+                    lookupASIN(foundAsin); 
+                }
+            }).catch(err => {
+                document.getElementById('ocr-loading').classList.add('hidden');
+                alert('OCR Error: ' + err.message);
+            });
+        }
+
+        // --- Barcode Logic (LPN) ---
+        let html5QrCode;
+        let isBarcodeScanning = false;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            html5QrCode = new Html5Qrcode("barcode-reader");
+        });
+
+        function toggleBarcodeCamera() {
+            const btn = document.getElementById('btn-barcode-cam');
+            const container = document.getElementById('barcode-reader-container');
+            
+            if (isBarcodeScanning) {
+                html5QrCode.stop().then(() => {
+                    isBarcodeScanning = false;
+                    container.classList.add('hidden');
+                    btn.innerHTML = "📷";
+                }).catch(err => console.error(err));
+            } else {
+                container.classList.remove('hidden');
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 100 } }, // スマホ用にフォーカス枠を小さく調整
+                    (decodedText) => handleBarcodeResult(decodedText),
+                    (error) => {}
+                ).then(() => {
+                    isBarcodeScanning = true;
+                    btn.innerHTML = "🛑";
+                }).catch(err => {
+                    alert("Camera start failed.");
+                });
+            }
+        }
+
+        function processBarcodeUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            html5QrCode.scanFile(file, true)
+                .then(decodedText => handleBarcodeResult(decodedText))
+                .catch(err => alert("Barcode read failed."));
+            event.target.value = ''; 
+        }
+
+        function handleBarcodeResult(decodedText) {
+            if (scanTargetRowId !== null) {
+                updateRecord(scanTargetRowId, 'lpn', decodedText);
+                renderTable();
+                cancelRowScan(); 
+            } else {
+                document.getElementById('in-lpn').value = decodedText;
+                
+                // モバイルでの効率化：LPNスキャン成功時にカメラを自動停止（連続スキャンが不要な場合）
+                if (isBarcodeScanning) toggleBarcodeCamera();
+            }
+        }
+
+        // --- Excel Import/Export ---
+        function exportToExcel() {
+            if (records.length === 0) {
+                alert("No data to export!");
+                return;
+            }
+            const wsData = records.map((r, i) => ({
+                "No": i + 1,
+                "Entry Date": r.entryDate,
+                "Shipment ID": r.shipmentId,
+                "VRET ID": r.vretId,
+                "LPN #": r.lpn,
+                "Process Date": r.processDate,
+                "Reason": r.reason,
+                "ASIN": r.asin,
+                "SKU": r.sku,
+                "S/N": r.sn,
+                "Qty": 1,
+                "Condition": r.condition,
+                "Comments": r.comments,
+                "Refurbishable": r.refurbishable ? "Yes" : "No"
+            }));
+            const ws = XLSX.utils.json_to_sheet(wsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Returns");
+            const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, "");
+            XLSX.writeFile(wb, `Returns_Management_${dateStr}.xlsx`);
+        }
+
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                let importedCount = 0;
+                jsonData.forEach(row => {
+                    records.push({
+                        id: recordIdCounter++,
+                        entryDate: row["Entry Date"] || '',
+                        shipmentId: row["Shipment ID"] || '',
+                        vretId: row["VRET ID"] || '',
+                        lpn: row["LPN #"] || '',
+                        processDate: row["Process Date"] || '',
+                        reason: row["Reason"] || '',
+                        asin: row["ASIN"] || '',
+                        sku: row["SKU"] || '',
+                        sn: row["S/N"] || '',
+                        qty: 1,
+                        condition: row["Condition"] || '',
+                        comments: row["Comments"] || '',
+                        refurbishable: row["Refurbishable"] === "Yes"
+                    });
+                    importedCount++;
+                });
+                renderTable();
+                saveRecords(); 
+                alert(`Imported ${importedCount} records.`);
+                event.target.value = ''; 
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>
