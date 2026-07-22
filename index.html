@@ -9,6 +9,7 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
+        /* iOS Safariでの自動ズームを防ぐため16pxを下限に */
         input, select, button {
             font-size: 16px; 
         }
@@ -16,7 +17,7 @@
             width: 100%;
             background-color: transparent;
             border: 1px solid transparent;
-            padding: 2px 4px;
+            padding: 4px 6px;
             border-radius: 4px;
             transition: all 0.2s;
         }
@@ -94,16 +95,18 @@
         </div>
     </header>
 
-    <div class="max-w-3xl mx-auto space-y-2 p-2">
+    <div class="max-w-3xl mx-auto space-y-3 p-2">
         
-        <div class="bg-white p-2.5 rounded-lg shadow-sm border border-slate-200">
-            <div class="grid grid-cols-2 gap-2">
-                <div class="flex flex-col gap-1">
-                    <div class="text-[10px] font-bold text-blue-600 flex justify-between">
+        <!-- Scanners Area -->
+        <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
+            <div class="grid grid-cols-2 gap-3">
+                <!-- Slip OCR Controls -->
+                <div class="flex flex-col gap-1.5">
+                    <div class="text-xs font-bold text-blue-600 flex justify-between">
                         <span>Slip OCR</span>
-                        <span id="ocr-loading" class="hidden animate-pulse text-red-500">Processing...</span>
+                        <span id="ocr-loading" class="hidden animate-pulse text-red-500 text-[10px]">Processing...</span>
                     </div>
-                    <div class="flex gap-1">
+                    <div class="flex gap-1.5">
                         <button onclick="startOCRCamera()" id="btn-ocr-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">📷</button>
                         <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">
                             🖼️<input type="file" accept="image/*" class="hidden" onchange="processOCRUpload(event)">
@@ -111,9 +114,10 @@
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                    <span class="text-[10px] font-bold text-indigo-600">LPN Scan</span>
-                    <div class="flex gap-1">
+                <!-- LPN Scanner Controls -->
+                <div class="flex flex-col gap-1.5">
+                    <span class="text-xs font-bold text-indigo-600">LPN Scan</span>
+                    <div class="flex gap-1.5">
                         <button onclick="toggleBarcodeCamera()" id="btn-barcode-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">📷</button>
                         <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">
                             🖼️<input type="file" accept="image/*" class="hidden" onchange="processBarcodeUpload(event)">
@@ -122,70 +126,75 @@
                 </div>
             </div>
 
-            <div id="ocr-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-2">
+            <!-- OCR Camera/Preview Container -->
+            <div id="ocr-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-3">
                 <video id="ocr-video" autoplay playsinline muted></video>
-                <button onclick="captureOCR()" class="absolute bottom-2 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-1.5 rounded-full text-sm font-bold shadow-lg border-2 border-white">
+                <button onclick="captureOCR()" class="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-1.5 rounded-full text-sm font-bold shadow-lg border-2 border-white">
                     Capture
                 </button>
             </div>
             <canvas id="ocr-canvas" class="hidden"></canvas>
-            <div id="ocr-preview-container" class="hidden mt-2 border rounded bg-slate-50 p-1 text-center">
+            <div id="ocr-preview-container" class="hidden mt-3 border rounded bg-slate-50 p-2 text-center">
                 <img id="ocr-preview" class="max-h-24 mx-auto rounded cursor-pointer" src="" onclick="openImageModal(this.src)" title="Tap to enlarge">
             </div>
 
-            <div id="scanner-target-alert" class="hidden bg-yellow-100 border border-yellow-300 text-yellow-800 text-[10px] px-2 py-1 rounded mt-2 font-bold flex justify-between items-center">
+            <!-- Barcode Camera Container -->
+            <div id="scanner-target-alert" class="hidden bg-yellow-100 border border-yellow-300 text-yellow-800 text-xs px-3 py-2 rounded mt-3 font-bold flex justify-between items-center">
                 <span class="animate-pulse">List Row Scan Mode...</span>
                 <button onclick="cancelRowScan()" class="text-yellow-600 underline">Cancel</button>
             </div>
-            <div id="barcode-reader-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-2">
+            <div id="barcode-reader-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-3">
                 <div id="barcode-reader" class="w-full"></div>
             </div>
         </div>
 
-        <div class="bg-white p-2.5 rounded-lg shadow-sm border border-slate-200">
-            <div id="manual-input-area" class="grid grid-cols-2 gap-x-2 gap-y-1.5">
+        <!-- Manual Input Form -->
+        <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
+            <div id="manual-input-area" class="grid grid-cols-2 gap-x-3 gap-y-2">
                 
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Shipment ID</label>
-                    <input type="text" id="in-shipment" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Shipment ID</label>
+                    <!-- min-w-0を追加してフレックス/グリッド内のオーバーフローを防止 -->
+                    <input type="text" id="in-shipment" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">VRET ID</label>
-                    <input type="text" id="in-vret" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">VRET ID</label>
+                    <input type="text" id="in-vret" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
                 </div>
                 
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Date</label>
-                    <input type="date" id="in-date" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Date</label>
+                    <input type="date" id="in-date" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">ASIN</label>
-                    <input type="text" id="in-asin" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none" onchange="lookupASIN(this.value)">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">ASIN</label>
+                    <input type="text" id="in-asin" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none" onchange="lookupASIN(this.value)">
                 </div>
 
                 <div class="col-span-2">
-                    <label class="block text-[10px] font-bold text-blue-600 mb-0.5">LPN #</label>
-                    <input type="text" id="in-lpn" class="w-full border-2 border-blue-300 rounded px-2 py-1.5 text-sm font-bold bg-blue-50 focus:bg-white outline-none shadow-inner">
+                    <label class="block text-xs font-bold text-blue-600 mb-1">LPN #</label>
+                    <input type="text" id="in-lpn" class="w-full min-w-0 border-2 border-blue-300 rounded px-2 py-2 text-sm font-bold bg-blue-50 focus:bg-white outline-none shadow-inner">
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">SKU</label>
-                    <input type="text" id="in-sku" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">SKU</label>
+                    <input type="text" id="in-sku" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
                 </div>
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">S/N</label>
-                    <input type="text" id="in-sn" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">S/N</label>
+                    <input type="text" id="in-sn" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Reason</label>
-                    <input type="text" id="in-reason" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Reason</label>
+                    <input type="text" id="in-reason" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
                 </div>
+                <!-- 【改善】Conditionのハイブリッド入力の幅制約を強化 -->
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Condition</label>
-                    <div class="flex items-center bg-slate-50 border border-slate-300 rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white">
-                        <input type="text" id="in-condition" class="w-full px-2 py-1 text-sm bg-transparent outline-none" placeholder="Select or type">
-                        <select class="bg-slate-200 text-slate-600 outline-none px-1 py-1 border-l border-slate-300 cursor-pointer" onchange="if(this.value) { document.getElementById('in-condition').value=this.value; } this.selectedIndex=0;">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Condition</label>
+                    <div class="flex items-center bg-slate-50 border border-slate-300 rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white w-full">
+                        <input type="text" id="in-condition" class="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent outline-none" placeholder="Type/Select">
+                        <select class="w-8 flex-shrink-0 bg-slate-200 text-slate-600 outline-none px-1 py-1.5 border-l border-slate-300 cursor-pointer text-center" onchange="if(this.value) { document.getElementById('in-condition').value=this.value; } this.selectedIndex=0;">
                             <option value="" disabled selected>▼</option>
                             <option value="New">New</option>
                             <option value="Like New">Like New</option>
@@ -198,26 +207,27 @@
                 </div>
                 
                 <div class="col-span-2">
-                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Comments</label>
-                    <input type="text" id="in-comments" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">Comments</label>
+                    <input type="text" id="in-comments" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100">
-                <div class="w-16">
-                    <label class="block text-[10px] font-bold text-slate-700 mb-0.5 text-center">Qty</label>
-                    <input type="number" id="in-qty" value="1" min="1" class="w-full border-2 border-slate-300 rounded px-1 py-1 font-bold text-center text-sm outline-none">
+            <!-- 【改善】アクション行の余白・幅を再計算し、干渉を排除 -->
+            <div class="flex items-end gap-2 mt-4 pt-3 border-t border-slate-200">
+                <div class="w-1/4">
+                    <label class="block text-xs font-bold text-slate-700 mb-1 text-center">Qty</label>
+                    <input type="number" id="in-qty" value="1" min="1" class="w-full min-w-0 border border-slate-300 rounded px-1 py-1.5 font-bold text-center text-sm outline-none">
                 </div>
                 
-                <div class="flex flex-col items-center justify-center flex-shrink-0 w-12">
-                    <label class="block text-[9px] font-bold text-slate-700 mb-0.5 text-center leading-tight">Refurb</label>
-                    <input type="checkbox" id="in-refurbishable" checked class="w-5 h-5 rounded border-gray-300 text-blue-600">
+                <div class="w-1/4 flex flex-col items-center justify-center pb-1">
+                    <label class="block text-[10px] font-bold text-slate-700 mb-1 text-center leading-tight">Refurb</label>
+                    <input type="checkbox" id="in-refurbishable" checked class="w-6 h-6 rounded border-gray-300 text-blue-600 flex-shrink-0 cursor-pointer">
                 </div>
                 
-                <button onclick="addToList()" class="flex-1 bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 font-bold text-sm h-10 flex items-center justify-center">
+                <button onclick="addToList()" class="flex-1 bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 font-bold text-sm h-10 flex items-center justify-center flex-shrink-0">
                     Add
                 </button>
-                <button onclick="clearForm()" class="bg-slate-200 text-slate-700 rounded shadow-sm hover:bg-slate-300 font-bold text-sm h-10 w-12 flex items-center justify-center">
+                <button onclick="clearForm()" class="w-12 bg-slate-200 text-slate-700 rounded shadow-sm hover:bg-slate-300 font-bold text-sm h-10 flex items-center justify-center flex-shrink-0">
                     Clr
                 </button>
             </div>
@@ -225,9 +235,9 @@
 
         <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
             <div class="p-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                <span id="record-count" class="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-full">Total: 0</span>
+                <span id="record-count" class="bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1 rounded-full">Total: 0</span>
                 
-                <div class="flex items-center gap-1 bg-white px-2 py-0.5 rounded shadow-sm border border-slate-200">
+                <div class="flex items-center gap-1 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
                     <label class="text-[10px] font-bold text-slate-500">Zoom:</label>
                     <input type="range" id="table-zoom-slider" min="50" max="150" value="100" class="w-16 h-1 bg-slate-200 rounded-lg appearance-none" oninput="changeTableZoom(this.value)">
                 </div>
@@ -237,20 +247,20 @@
                 <table id="data-table" class="w-full text-left text-xs whitespace-nowrap transform-origin-top-left transition-all duration-200">
                     <thead class="bg-slate-100 text-slate-600 uppercase font-bold border-b">
                         <tr>
-                            <th class="px-2 py-2 min-w-[30px]">No</th>
-                            <th class="px-2 py-2 min-w-[110px]">Entry Date</th>
-                            <th class="px-2 py-2 min-w-[120px]">Shipment ID</th>
-                            <th class="px-2 py-2 min-w-[120px]">VRET ID</th>
-                            <th class="px-2 py-2 min-w-[160px]">LPN #</th>
-                            <th class="px-2 py-2 min-w-[110px]">Process Date</th>
-                            <th class="px-2 py-2 min-w-[100px]">Reason</th>
-                            <th class="px-2 py-2 min-w-[110px]">ASIN</th>
-                            <th class="px-2 py-2 min-w-[120px]">SKU</th>
-                            <th class="px-2 py-2 min-w-[130px]">S/N</th>
-                            <th class="px-2 py-2 min-w-[140px]">Condition</th>
-                            <th class="px-2 py-2 min-w-[150px]">Comments</th>
-                            <th class="px-2 py-2 min-w-[80px] text-center">Refurb</th>
-                            <th class="px-2 py-2 min-w-[80px] text-center">Act</th>
+                            <th class="px-2 py-2 min-w-[40px]">No</th>
+                            <th class="px-2 py-2 min-w-[120px]">Entry Date</th>
+                            <th class="px-2 py-2 min-w-[130px]">Shipment ID</th>
+                            <th class="px-2 py-2 min-w-[130px]">VRET ID</th>
+                            <th class="px-2 py-2 min-w-[170px]">LPN #</th>
+                            <th class="px-2 py-2 min-w-[120px]">Process Date</th>
+                            <th class="px-2 py-2 min-w-[120px]">Reason</th>
+                            <th class="px-2 py-2 min-w-[120px]">ASIN</th>
+                            <th class="px-2 py-2 min-w-[130px]">SKU</th>
+                            <th class="px-2 py-2 min-w-[140px]">S/N</th>
+                            <th class="px-2 py-2 min-w-[150px]">Condition</th>
+                            <th class="px-2 py-2 min-w-[160px]">Comments</th>
+                            <th class="px-2 py-2 min-w-[90px] text-center">Refurb</th>
+                            <th class="px-2 py-2 min-w-[90px] text-center">Act</th>
                         </tr>
                     </thead>
                     <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700">
@@ -258,7 +268,7 @@
                 </table>
             </div>
             
-            <div id="empty-state" class="p-6 text-center text-xs text-slate-400 font-bold">
+            <div id="empty-state" class="p-6 text-center text-sm text-slate-400 font-bold">
                 No records yet.
             </div>
         </div>
@@ -348,24 +358,17 @@
             saveAsinMaster();
         }
 
-        // --- 【改善】リスト内スキャンのカメラ連動 ---
         function prepareRowScan(rowId) {
             scanTargetRowId = rowId;
             document.getElementById('scanner-target-alert').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' }); 
-            // カメラが起動していなければ自動起動する
-            if (!isBarcodeScanning) {
-                toggleBarcodeCamera();
-            }
+            if (!isBarcodeScanning) toggleBarcodeCamera();
         }
 
         function cancelRowScan() {
             scanTargetRowId = null;
             document.getElementById('scanner-target-alert').classList.add('hidden');
-            // キャンセル時にカメラが開いていたら閉じる
-            if (isBarcodeScanning) {
-                toggleBarcodeCamera();
-            }
+            if (isBarcodeScanning) toggleBarcodeCamera();
         }
 
         function addToList() {
@@ -472,7 +475,7 @@
                     
                     <td class="px-2 py-1 flex items-center gap-1">
                         <input type="text" value="${r.lpn}" class="table-input text-blue-600 font-bold w-full" onchange="updateRecord(${r.id}, 'lpn', this.value)">
-                        <button onclick="prepareRowScan(${r.id})" class="text-slate-400 hover:text-blue-600 bg-white border px-1.5 py-0.5 rounded shadow-sm text-xs flex-shrink-0" title="Scan LPN directly">📷</button>
+                        <button onclick="prepareRowScan(${r.id})" class="text-slate-400 hover:text-blue-600 bg-white border px-1.5 py-1 rounded shadow-sm text-xs flex-shrink-0" title="Scan LPN directly">📷</button>
                     </td>
 
                     <td class="px-2 py-1"><input type="date" value="${r.processDate}" class="table-input" onchange="updateRecord(${r.id}, 'processDate', this.value)"></td>
@@ -481,10 +484,11 @@
                     <td class="px-2 py-1"><input type="text" value="${r.sku}" class="table-input font-bold" onchange="updateRecord(${r.id}, 'sku', this.value)"></td>
                     <td class="px-2 py-1"><input type="text" value="${r.sn}" class="table-input font-mono" onchange="updateRecord(${r.id}, 'sn', this.value)"></td>
                     
+                    <!-- 【改善】リスト行のCondition入力の幅制約を強化 -->
                     <td class="px-2 py-1">
-                        <div class="flex items-center bg-white border border-transparent hover:border-slate-300 rounded overflow-hidden">
-                            <input type="text" value="${r.condition}" class="w-full px-1 text-xs outline-none bg-transparent" onchange="updateRecord(${r.id}, 'condition', this.value)">
-                            <select class="text-xs bg-slate-100 text-slate-500 outline-none border-l cursor-pointer" onchange="if(this.value) { updateRecord(${r.id}, 'condition', this.value); renderTable(); }">
+                        <div class="flex items-center bg-white border border-transparent hover:border-slate-300 rounded overflow-hidden w-full">
+                            <input type="text" value="${r.condition}" class="flex-1 min-w-0 px-2 py-1 text-sm outline-none bg-transparent" onchange="updateRecord(${r.id}, 'condition', this.value)">
+                            <select class="w-6 flex-shrink-0 text-xs bg-slate-100 text-slate-500 outline-none border-l cursor-pointer text-center" onchange="if(this.value) { updateRecord(${r.id}, 'condition', this.value); renderTable(); }">
                                 <option value="" disabled selected>▼</option>
                                 <option value="New">New</option>
                                 <option value="Like New">Like New</option>
@@ -652,20 +656,15 @@
             event.target.value = ''; 
         }
 
-        // --- 【改善】スキャン結果の処理（カメラの自動停止連動） ---
         function handleBarcodeResult(decodedText) {
             if (scanTargetRowId !== null) {
                 updateRecord(scanTargetRowId, 'lpn', decodedText);
                 renderTable();
                 
-                // アラートを隠し、IDをリセット
                 scanTargetRowId = null;
                 document.getElementById('scanner-target-alert').classList.add('hidden');
                 
-                // カメラが起動していれば自動で閉じる
-                if (isBarcodeScanning) {
-                    toggleBarcodeCamera();
-                }
+                if (isBarcodeScanning) toggleBarcodeCamera();
             } else {
                 document.getElementById('in-lpn').value = decodedText;
                 if (isBarcodeScanning) toggleBarcodeCamera();
