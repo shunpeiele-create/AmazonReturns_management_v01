@@ -94,15 +94,6 @@
         </div>
     </header>
 
-    <datalist id="condition-options">
-        <option value="New"></option>
-        <option value="Like New"></option>
-        <option value="Good"></option>
-        <option value="Acceptable"></option>
-        <option value="Damaged"></option>
-        <option value="Defective"></option>
-    </datalist>
-
     <div class="max-w-3xl mx-auto space-y-2 p-2">
         
         <div class="bg-white p-2.5 rounded-lg shadow-sm border border-slate-200">
@@ -192,7 +183,18 @@
                 </div>
                 <div>
                     <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Condition</label>
-                    <input type="text" id="in-condition" list="condition-options" class="w-full border border-slate-300 rounded px-2 py-1 text-sm bg-slate-50 focus:bg-white outline-none">
+                    <div class="flex items-center bg-slate-50 border border-slate-300 rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white">
+                        <input type="text" id="in-condition" class="w-full px-2 py-1 text-sm bg-transparent outline-none" placeholder="Select or type">
+                        <select class="bg-slate-200 text-slate-600 outline-none px-1 py-1 border-l border-slate-300 cursor-pointer" onchange="if(this.value) { document.getElementById('in-condition').value=this.value; } this.selectedIndex=0;">
+                            <option value="" disabled selected>▼</option>
+                            <option value="New">New</option>
+                            <option value="Like New">Like New</option>
+                            <option value="Good">Good</option>
+                            <option value="Acceptable">Acceptable</option>
+                            <option value="Damaged">Damaged</option>
+                            <option value="Defective">Defective</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="col-span-2">
@@ -245,7 +247,7 @@
                             <th class="px-2 py-2 min-w-[110px]">ASIN</th>
                             <th class="px-2 py-2 min-w-[120px]">SKU</th>
                             <th class="px-2 py-2 min-w-[130px]">S/N</th>
-                            <th class="px-2 py-2 min-w-[110px]">Condition</th>
+                            <th class="px-2 py-2 min-w-[140px]">Condition</th>
                             <th class="px-2 py-2 min-w-[150px]">Comments</th>
                             <th class="px-2 py-2 min-w-[80px] text-center">Refurb</th>
                             <th class="px-2 py-2 min-w-[80px] text-center">Act</th>
@@ -346,15 +348,24 @@
             saveAsinMaster();
         }
 
+        // --- 【改善】リスト内スキャンのカメラ連動 ---
         function prepareRowScan(rowId) {
             scanTargetRowId = rowId;
             document.getElementById('scanner-target-alert').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' }); 
+            // カメラが起動していなければ自動起動する
+            if (!isBarcodeScanning) {
+                toggleBarcodeCamera();
+            }
         }
 
         function cancelRowScan() {
             scanTargetRowId = null;
             document.getElementById('scanner-target-alert').classList.add('hidden');
+            // キャンセル時にカメラが開いていたら閉じる
+            if (isBarcodeScanning) {
+                toggleBarcodeCamera();
+            }
         }
 
         function addToList() {
@@ -461,7 +472,7 @@
                     
                     <td class="px-2 py-1 flex items-center gap-1">
                         <input type="text" value="${r.lpn}" class="table-input text-blue-600 font-bold w-full" onchange="updateRecord(${r.id}, 'lpn', this.value)">
-                        <button onclick="prepareRowScan(${r.id})" class="text-slate-400 hover:text-blue-600 bg-white border px-1.5 py-0.5 rounded shadow-sm text-xs" title="Scan LPN directly">📷</button>
+                        <button onclick="prepareRowScan(${r.id})" class="text-slate-400 hover:text-blue-600 bg-white border px-1.5 py-0.5 rounded shadow-sm text-xs flex-shrink-0" title="Scan LPN directly">📷</button>
                     </td>
 
                     <td class="px-2 py-1"><input type="date" value="${r.processDate}" class="table-input" onchange="updateRecord(${r.id}, 'processDate', this.value)"></td>
@@ -469,7 +480,22 @@
                     <td class="px-2 py-1"><input type="text" value="${r.asin}" class="table-input font-mono" onchange="updateRecord(${r.id}, 'asin', this.value)"></td>
                     <td class="px-2 py-1"><input type="text" value="${r.sku}" class="table-input font-bold" onchange="updateRecord(${r.id}, 'sku', this.value)"></td>
                     <td class="px-2 py-1"><input type="text" value="${r.sn}" class="table-input font-mono" onchange="updateRecord(${r.id}, 'sn', this.value)"></td>
-                    <td class="px-2 py-1"><input type="text" list="condition-options" value="${r.condition}" class="table-input" onchange="updateRecord(${r.id}, 'condition', this.value)"></td>
+                    
+                    <td class="px-2 py-1">
+                        <div class="flex items-center bg-white border border-transparent hover:border-slate-300 rounded overflow-hidden">
+                            <input type="text" value="${r.condition}" class="w-full px-1 text-xs outline-none bg-transparent" onchange="updateRecord(${r.id}, 'condition', this.value)">
+                            <select class="text-xs bg-slate-100 text-slate-500 outline-none border-l cursor-pointer" onchange="if(this.value) { updateRecord(${r.id}, 'condition', this.value); renderTable(); }">
+                                <option value="" disabled selected>▼</option>
+                                <option value="New">New</option>
+                                <option value="Like New">Like New</option>
+                                <option value="Good">Good</option>
+                                <option value="Acceptable">Acceptable</option>
+                                <option value="Damaged">Damaged</option>
+                                <option value="Defective">Defective</option>
+                            </select>
+                        </div>
+                    </td>
+
                     <td class="px-2 py-1"><input type="text" value="${r.comments}" class="table-input" onchange="updateRecord(${r.id}, 'comments', this.value)"></td>
                     <td class="px-2 py-1 text-center">
                         <input type="checkbox" class="table-checkbox mx-auto" ${r.refurbishable ? 'checked' : ''} onchange="updateRecord(${r.id}, 'refurbishable', this.checked)">
@@ -581,7 +607,6 @@
         let isBarcodeScanning = false;
 
         window.addEventListener('DOMContentLoaded', () => {
-            // 【改善】読み取るバーコードの規格を制限（無関係な2次元コードによる文字化けを防止）
             html5QrCode = new Html5Qrcode("barcode-reader", {
                 formatsToSupport: [
                     Html5QrcodeSupportedFormats.CODE_128,
@@ -627,11 +652,20 @@
             event.target.value = ''; 
         }
 
+        // --- 【改善】スキャン結果の処理（カメラの自動停止連動） ---
         function handleBarcodeResult(decodedText) {
             if (scanTargetRowId !== null) {
                 updateRecord(scanTargetRowId, 'lpn', decodedText);
                 renderTable();
-                cancelRowScan(); 
+                
+                // アラートを隠し、IDをリセット
+                scanTargetRowId = null;
+                document.getElementById('scanner-target-alert').classList.add('hidden');
+                
+                // カメラが起動していれば自動で閉じる
+                if (isBarcodeScanning) {
+                    toggleBarcodeCamera();
+                }
             } else {
                 document.getElementById('in-lpn').value = decodedText;
                 if (isBarcodeScanning) toggleBarcodeCamera();
