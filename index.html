@@ -9,7 +9,6 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
-        /* iOS Safariでの自動ズームを防ぐため16pxを下限に */
         input, select, button {
             font-size: 16px; 
         }
@@ -31,7 +30,8 @@
             height: 1.25rem;
             cursor: pointer;
         }
-        #barcode-reader video, #ocr-video {
+        /* 動画プレビューの統一 */
+        video {
             width: 100% !important;
             max-height: 40vh;
             object-fit: cover;
@@ -97,9 +97,9 @@
 
     <div class="max-w-3xl mx-auto space-y-3 p-2">
         
-        <!-- Scanners Area -->
         <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
             <div class="grid grid-cols-2 gap-3">
+                
                 <!-- Slip OCR Controls -->
                 <div class="flex flex-col gap-1.5">
                     <div class="text-xs font-bold text-blue-600 flex justify-between">
@@ -116,9 +116,13 @@
 
                 <!-- LPN Scanner Controls -->
                 <div class="flex flex-col gap-1.5">
-                    <span class="text-xs font-bold text-indigo-600">LPN Scan</span>
+                    <div class="text-xs font-bold text-indigo-600 flex justify-between">
+                        <span>LPN Scan</span>
+                        <span id="lpn-loading" class="hidden animate-pulse text-red-500 text-[10px]">Processing...</span>
+                    </div>
                     <div class="flex gap-1.5">
-                        <button onclick="toggleBarcodeCamera()" id="btn-barcode-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">📷</button>
+                        <!-- 【改善】LPNもキャプチャ形式に変更 -->
+                        <button onclick="startLPNCamera()" id="btn-lpn-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">📷</button>
                         <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">
                             🖼️<input type="file" accept="image/*" class="hidden" onchange="processBarcodeUpload(event)">
                         </label>
@@ -138,17 +142,25 @@
                 <img id="ocr-preview" class="max-h-24 mx-auto rounded cursor-pointer" src="" onclick="openImageModal(this.src)" title="Tap to enlarge">
             </div>
 
-            <!-- Barcode Camera Container -->
+            <!-- LPN Camera/Preview Container -->
             <div id="scanner-target-alert" class="hidden bg-yellow-100 border border-yellow-300 text-yellow-800 text-xs px-3 py-2 rounded mt-3 font-bold flex justify-between items-center">
                 <span class="animate-pulse">List Row Scan Mode...</span>
                 <button onclick="cancelRowScan()" class="text-yellow-600 underline">Cancel</button>
             </div>
-            <div id="barcode-reader-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-3">
-                <div id="barcode-reader" class="w-full"></div>
+            <!-- 【改善】LPN用のキャプチャコンテナ -->
+            <div id="lpn-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-3">
+                <video id="lpn-video" autoplay playsinline muted></video>
+                <button onclick="captureLPN()" class="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white px-6 py-1.5 rounded-full text-sm font-bold shadow-lg border-2 border-white">
+                    Capture
+                </button>
             </div>
+            <canvas id="lpn-canvas" class="hidden"></canvas>
+            <div id="lpn-preview-container" class="hidden mt-3 border rounded bg-slate-50 p-2 text-center">
+                <img id="lpn-preview" class="max-h-24 mx-auto rounded cursor-pointer" src="" onclick="openImageModal(this.src)" title="Tap to enlarge">
+            </div>
+
         </div>
 
-        <!-- Manual Input Form -->
         <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
             <div id="manual-input-area" class="grid grid-cols-2 gap-x-3 gap-y-2">
                 
@@ -167,7 +179,6 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 mb-1">ASIN</label>
-                    <!-- 【改善】oninput に変更し、打ち込まれた瞬間に反映させる -->
                     <input type="text" id="in-asin" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none uppercase" oninput="lookupASIN(this.value)">
                 </div>
 
@@ -295,9 +306,8 @@
         let recordIdCounter = records.length > 0 ? Math.max(...records.map(r => r.id)) + 1 : 1; 
         let scanTargetRowId = null;
 
-        function saveRecords() {
-            localStorage.setItem('returnRecords', JSON.stringify(records));
-        }
+        // html5QrCode engine (now only used for static image processing)
+        let html5QrCode = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderTable();
@@ -306,6 +316,15 @@
                     event.preventDefault();
                     addToList();
                 }
+            });
+            // Barcode engine init
+            html5QrCode = new Html5Qrcode("barcode-reader", {
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.UPC_A
+                ]
             });
         });
 
@@ -360,13 +379,14 @@
             scanTargetRowId = rowId;
             document.getElementById('scanner-target-alert').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' }); 
-            if (!isBarcodeScanning) toggleBarcodeCamera();
+            // 行のカメラボタンを押したらLPN用カメラを起動
+            startLPNCamera();
         }
 
         function cancelRowScan() {
             scanTargetRowId = null;
             document.getElementById('scanner-target-alert').classList.add('hidden');
-            if (isBarcodeScanning) toggleBarcodeCamera();
+            if (lpnStream) startLPNCamera(); // Stop if running
         }
 
         function addToList() {
@@ -397,7 +417,6 @@
                 comments: document.getElementById('in-comments').value
             };
 
-            // 【改善】新規ASINとSKUのペアが入力されていれば、自動学習（マスター登録）
             if (baseData.asin && baseData.sku && !asinToSkuMaster[baseData.asin]) {
                 asinToSkuMaster[baseData.asin] = baseData.sku;
                 saveAsinMaster(); 
@@ -515,7 +534,7 @@
             `).join('');
         }
 
-        // --- OCR Logic ---
+        // --- 【改善】OCR Logic (画像前処理フィルタ導入) ---
         let ocrStream = null;
 
         async function startOCRCamera() {
@@ -533,11 +552,7 @@
 
             try {
                 ocrStream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'environment',
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    }
+                    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
                 });
                 video.srcObject = ocrStream;
                 container.classList.remove('hidden');
@@ -552,9 +567,14 @@
             const canvas = document.getElementById('ocr-canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            startOCRCamera(); 
+            const ctx = canvas.getContext('2d');
+            // 【改善】精度のための画像前処理：白黒化とコントラスト強調
+            ctx.filter = 'grayscale(100%) contrast(150%)';
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.filter = 'none'; // リセット
+            
+            startOCRCamera(); // 停止
             executeOCR(canvas.toDataURL('image/jpeg'));
         }
 
@@ -562,7 +582,21 @@
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = e => executeOCR(e.target.result);
+            reader.onload = e => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.getElementById('ocr-canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    // アップロード画像にも前処理を適用
+                    ctx.filter = 'grayscale(100%) contrast(150%)';
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    ctx.filter = 'none';
+                    executeOCR(canvas.toDataURL('image/jpeg'));
+                };
+                img.src = e.target.result;
+            };
             reader.readAsDataURL(file);
             event.target.value = '';
         }
@@ -609,68 +643,97 @@
             });
         }
 
-        // --- Barcode Logic (LPN) ---
-        let html5QrCode;
-        let isBarcodeScanning = false;
+        // --- 【改善】Barcode Logic (LPN) キャプチャ形式への変更 ---
+        let lpnStream = null;
 
-        window.addEventListener('DOMContentLoaded', () => {
-            html5QrCode = new Html5Qrcode("barcode-reader", {
-                formatsToSupport: [
-                    Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.CODE_39,
-                    Html5QrcodeSupportedFormats.EAN_13,
-                    Html5QrcodeSupportedFormats.UPC_A
-                ]
-            });
-        });
-
-        function toggleBarcodeCamera() {
-            const btn = document.getElementById('btn-barcode-cam');
-            const container = document.getElementById('barcode-reader-container');
+        async function startLPNCamera() {
+            const video = document.getElementById('lpn-video');
+            const container = document.getElementById('lpn-video-container');
+            const btn = document.getElementById('btn-lpn-cam');
             
-            if (isBarcodeScanning) {
-                html5QrCode.stop().then(() => {
-                    isBarcodeScanning = false;
-                    container.classList.add('hidden');
-                    btn.innerHTML = "📷";
-                }).catch(err => console.error(err));
-            } else {
-                container.classList.remove('hidden');
-                html5QrCode.start(
-                    { facingMode: "environment" },
-                    { fps: 10, qrbox: { width: 250, height: 100 } },
-                    (decodedText) => handleBarcodeResult(decodedText),
-                    (error) => {}
-                ).then(() => {
-                    isBarcodeScanning = true;
-                    btn.innerHTML = "🛑";
-                }).catch(err => {
-                    alert("Camera start failed.");
-                });
+            if (lpnStream) {
+                lpnStream.getTracks().forEach(track => track.stop());
+                lpnStream = null;
+                container.classList.add('hidden');
+                btn.innerHTML = "📷";
+                return;
             }
+
+            try {
+                lpnStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+                });
+                video.srcObject = lpnStream;
+                container.classList.remove('hidden');
+                btn.innerHTML = "🛑";
+            } catch (err) {
+                alert("Camera access denied.");
+            }
+        }
+
+        function captureLPN() {
+            const video = document.getElementById('lpn-video');
+            const canvas = document.getElementById('lpn-canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            const ctx = canvas.getContext('2d');
+            // バーコードも白黒・コントラスト強調で読み取りやすく
+            ctx.filter = 'grayscale(100%) contrast(120%)';
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.filter = 'none';
+
+            startLPNCamera(); // カメラ停止
+            
+            // プレビュー表示
+            document.getElementById('lpn-preview').src = canvas.toDataURL('image/jpeg');
+            document.getElementById('lpn-preview-container').classList.remove('hidden');
+            document.getElementById('lpn-loading').classList.remove('hidden');
+
+            // ファイル化して解析へ
+            canvas.toBlob(blob => {
+                if (!blob) return;
+                const file = new File([blob], "barcode.jpg", { type: "image/jpeg" });
+                processBarcodeFile(file);
+            }, 'image/jpeg');
         }
 
         function processBarcodeUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            html5QrCode.scanFile(file, true)
-                .then(decodedText => handleBarcodeResult(decodedText))
-                .catch(err => alert("Barcode read failed."));
+            
+            // プレビュー表示
+            const reader = new FileReader();
+            reader.onload = e => {
+                document.getElementById('lpn-preview').src = e.target.result;
+                document.getElementById('lpn-preview-container').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+
+            document.getElementById('lpn-loading').classList.remove('hidden');
+            processBarcodeFile(file);
             event.target.value = ''; 
+        }
+
+        function processBarcodeFile(file) {
+            html5QrCode.scanFile(file, true)
+                .then(decodedText => {
+                    document.getElementById('lpn-loading').classList.add('hidden');
+                    handleBarcodeResult(decodedText);
+                })
+                .catch(err => {
+                    document.getElementById('lpn-loading').classList.add('hidden');
+                    alert("Barcode not found in the captured image. Please try again.");
+                });
         }
 
         function handleBarcodeResult(decodedText) {
             if (scanTargetRowId !== null) {
                 updateRecord(scanTargetRowId, 'lpn', decodedText);
                 renderTable();
-                
-                scanTargetRowId = null;
-                document.getElementById('scanner-target-alert').classList.add('hidden');
-                
-                if (isBarcodeScanning) toggleBarcodeCamera();
+                cancelRowScan(); 
             } else {
                 document.getElementById('in-lpn').value = decodedText;
-                if (isBarcodeScanning) toggleBarcodeCamera();
             }
         }
 
