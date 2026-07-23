@@ -31,6 +31,7 @@
             height: 1.25rem;
             cursor: pointer;
         }
+        /* 動画プレビューの統一 */
         #barcode-reader video, #ocr-video, #lpn-video {
             width: 100% !important;
             max-height: 40vh;
@@ -49,31 +50,33 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans pb-10">
 
-    <div id="image-modal" class="hidden fixed inset-0 z-50 bg-black/90 flex justify-center items-center p-2" onclick="closeModal('image-modal')">
+    <!-- 画像拡大表示用モーダル -->
+    <div id="image-modal" class="hidden fixed inset-0 z-50 bg-black/90 flex justify-center items-center p-2 md:p-6" onclick="closeModal('image-modal')">
         <div class="relative max-w-full max-h-full">
-            <button onclick="closeModal('image-modal')" class="absolute -top-3 -right-3 bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center font-bold shadow-lg cursor-pointer">&times;</button>
+            <button onclick="closeModal('image-modal')" class="absolute -top-3 -right-3 md:-top-4 md:-right-4 bg-white text-slate-800 rounded-full w-8 h-8 md:w-10 md:h-10 flex items-center justify-center font-bold shadow-lg cursor-pointer">&times;</button>
             <img id="modal-image" class="max-w-full max-h-[90vh] object-contain rounded shadow-lg" src="">
         </div>
     </div>
 
+    <!-- ASINマスター設定用モーダル -->
     <div id="settings-modal" class="hidden fixed inset-0 z-50 bg-black/60 flex justify-center items-center p-4">
-        <div class="bg-white rounded-xl shadow-lg w-full max-w-md p-4 relative">
-            <button onclick="closeModal('settings-modal')" class="absolute top-3 right-3 text-slate-400 hover:text-slate-800 font-bold text-xl">&times;</button>
-            <h2 class="text-lg font-bold mb-3">ASIN Master</h2>
+        <div class="bg-white rounded-xl shadow-lg w-full max-w-lg p-4 md:p-6 relative">
+            <button onclick="closeModal('settings-modal')" class="absolute top-3 right-3 md:top-4 md:right-4 text-slate-400 hover:text-slate-800 font-bold text-xl md:text-2xl">&times;</button>
+            <h2 class="text-lg md:text-xl font-bold mb-3 md:mb-4">ASIN Master</h2>
             
-            <div class="flex gap-2 mb-3 border-b pb-3">
-                <input type="text" id="set-asin" placeholder="ASIN (e.g. B0F...)" class="border rounded px-2 py-1.5 w-1/2 text-sm focus:ring-2 focus:ring-blue-500 outline-none uppercase">
-                <input type="text" id="set-sku" placeholder="SKU" class="border rounded px-2 py-1.5 w-1/2 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                <button onclick="addAsinMaster()" class="bg-blue-600 text-white px-3 py-1.5 rounded shadow hover:bg-blue-700 font-bold">+</button>
+            <div class="flex gap-2 mb-3 md:mb-4 border-b pb-3 md:pb-4">
+                <input type="text" id="set-asin" placeholder="ASIN (e.g. B0F...)" class="border rounded px-2 py-1.5 md:px-3 md:py-2 w-1/2 text-sm md:text-base focus:ring-2 focus:ring-blue-500 outline-none uppercase">
+                <input type="text" id="set-sku" placeholder="SKU" class="border rounded px-2 py-1.5 md:px-3 md:py-2 w-1/2 text-sm md:text-base focus:ring-2 focus:ring-blue-500 outline-none">
+                <button onclick="addAsinMaster()" class="bg-blue-600 text-white px-3 py-1.5 md:px-4 md:py-2 rounded shadow hover:bg-blue-700 font-bold">+</button>
             </div>
             
-            <div class="max-h-60 overflow-y-auto">
-                <table class="w-full text-left text-xs">
+            <div class="max-h-60 md:max-h-80 overflow-y-auto">
+                <table class="w-full text-left text-xs md:text-sm">
                     <thead class="bg-slate-100 text-slate-600 sticky top-0">
                         <tr>
-                            <th class="px-2 py-2">ASIN</th>
-                            <th class="px-2 py-2">SKU</th>
-                            <th class="px-2 py-2 text-right">Del</th>
+                            <th class="px-2 py-2 md:px-3 md:py-3">ASIN</th>
+                            <th class="px-2 py-2 md:px-3 md:py-3">SKU</th>
+                            <th class="px-2 py-2 md:px-3 md:py-3 text-right">Del</th>
                         </tr>
                     </thead>
                     <tbody id="asin-master-list" class="divide-y divide-slate-200">
@@ -83,192 +86,228 @@
         </div>
     </div>
 
-    <header class="bg-white p-2 shadow-sm border-b border-slate-200 flex justify-between items-center sticky top-0 z-40">
-        <h1 class="text-base font-bold text-slate-900 leading-tight">Returns<br>Manager</h1>
-        <div class="flex gap-2">
-            <button onclick="openSettings()" class="bg-slate-100 text-slate-600 p-2 rounded shadow-sm border border-slate-200" title="Settings">⚙️</button>
-            <label class="cursor-pointer bg-slate-100 text-slate-600 p-2 rounded shadow-sm border border-slate-200 flex items-center justify-center" title="Import Excel">
-                📥
+    <!-- ヘッダー -->
+    <header class="bg-white p-2 md:p-4 shadow-sm border-b border-slate-200 flex justify-between items-center sticky top-0 z-40">
+        <h1 class="text-base md:text-2xl font-bold text-slate-900 leading-tight">Returns<span class="hidden md:inline"> </span><br class="md:hidden">Manager</h1>
+        <div class="flex gap-2 md:gap-4">
+            <button onclick="openSettings()" class="bg-slate-100 text-slate-600 px-3 py-1.5 md:px-4 md:py-2 rounded shadow-sm border border-slate-200 md:font-semibold text-sm hover:bg-slate-200 flex items-center gap-1" title="Settings">
+                ⚙️<span class="hidden md:inline">Settings</span>
+            </button>
+            <label class="cursor-pointer bg-slate-100 text-slate-600 px-3 py-1.5 md:px-4 md:py-2 rounded shadow-sm border border-slate-200 md:font-semibold text-sm hover:bg-slate-200 flex items-center justify-center gap-1" title="Import Excel">
+                📥<span class="hidden md:inline">Import</span>
                 <input type="file" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
             </label>
-            <button onclick="exportToExcel()" class="bg-emerald-100 text-emerald-700 p-2 rounded shadow-sm border border-emerald-200" title="Export Excel">📤</button>
+            <button onclick="exportToExcel()" class="bg-emerald-100 text-emerald-700 md:bg-emerald-600 md:text-white px-3 py-1.5 md:px-4 md:py-2 rounded shadow-sm border border-emerald-200 md:border-transparent md:font-semibold text-sm hover:bg-emerald-200 md:hover:bg-emerald-700 flex items-center gap-1" title="Export Excel">
+                📤<span class="hidden md:inline">Export</span>
+            </button>
         </div>
     </header>
 
-    <div class="max-w-3xl mx-auto space-y-3 p-2">
+    <!-- 【改善】レスポンシブ用メインコンテナ（PC幅に対応） -->
+    <div class="max-w-[1400px] mx-auto space-y-3 md:space-y-6 p-2 md:p-6">
         
-        <!-- Scanners Area -->
-        <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
-            <div class="grid grid-cols-2 gap-3">
-                <!-- Slip OCR Controls -->
-                <div class="flex flex-col gap-1.5">
-                    <div class="text-xs font-bold text-blue-600 flex justify-between">
-                        <span>Slip OCR</span>
-                        <span id="ocr-loading" class="hidden animate-pulse text-red-500 text-[10px]">Processing...</span>
+        <!-- PC時は2カラム、スマホ時は1カラムに分割するグリッド -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-6">
+            
+            <!-- 【左カラム / スマホでは上部】 Scanners Area -->
+            <div class="lg:col-span-4 bg-white p-3 md:p-5 rounded-lg shadow-sm border border-slate-200 h-fit">
+                <!-- PC向けタイトル -->
+                <h2 class="hidden lg:flex text-lg font-bold mb-4 items-center gap-2 border-b pb-2">
+                    <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs">Step 1 & 2</span>
+                    Scanners
+                </h2>
+
+                <div class="grid grid-cols-2 lg:grid-cols-1 gap-3 md:gap-4">
+                    <!-- Slip OCR Controls -->
+                    <div class="flex flex-col gap-1.5 md:gap-2">
+                        <div class="text-xs md:text-sm font-bold text-blue-600 flex justify-between items-center">
+                            <span>Slip OCR</span>
+                            <span id="ocr-loading" class="hidden animate-pulse text-red-500 text-[10px] md:text-xs bg-red-50 px-2 py-0.5 rounded">Processing...</span>
+                        </div>
+                        <div class="flex gap-1.5 md:gap-2">
+                            <button onclick="startOCRCamera()" id="btn-ocr-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 md:py-2 rounded text-sm md:text-base font-bold shadow-sm hover:bg-slate-200 flex items-center justify-center gap-1">📷<span class="hidden md:inline text-xs font-normal">Camera</span></button>
+                            <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 md:py-2 rounded text-sm md:text-base font-bold shadow-sm hover:bg-slate-200 flex items-center justify-center gap-1">
+                                🖼️<span class="hidden md:inline text-xs font-normal">Upload</span><input type="file" accept="image/*" class="hidden" onchange="processOCRUpload(event)">
+                            </label>
+                        </div>
                     </div>
-                    <div class="flex gap-1.5">
-                        <button onclick="startOCRCamera()" id="btn-ocr-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">📷</button>
-                        <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">
-                            🖼️<input type="file" accept="image/*" class="hidden" onchange="processOCRUpload(event)">
-                        </label>
-                    </div>
-                </div>
 
-                <!-- LPN Scanner Controls -->
-                <div class="flex flex-col gap-1.5">
-                    <div class="text-xs font-bold text-indigo-600 flex justify-between">
-                        <span>LPN Scan</span>
-                        <span id="lpn-loading" class="hidden animate-pulse text-red-500 text-[10px]">Processing...</span>
-                    </div>
-                    <div class="flex gap-1.5">
-                        <button onclick="startLPNCamera()" id="btn-lpn-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">📷</button>
-                        <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">
-                            🖼️<input type="file" accept="image/*" class="hidden" onchange="processBarcodeUpload(event)">
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- OCR Camera/Preview Container -->
-            <div id="ocr-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-3">
-                <video id="ocr-video" autoplay playsinline muted></video>
-                <button onclick="captureOCR()" class="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-1.5 rounded-full text-sm font-bold shadow-lg border-2 border-white">
-                    Capture
-                </button>
-            </div>
-            <canvas id="ocr-canvas" class="hidden"></canvas>
-            <div id="ocr-preview-container" class="hidden mt-3 border rounded bg-slate-50 p-2 text-center">
-                <img id="ocr-preview" class="max-h-24 mx-auto rounded cursor-pointer" src="" onclick="openImageModal(this.src)" title="Tap to enlarge">
-            </div>
-
-            <!-- LPN Camera/Preview Container -->
-            <div id="scanner-target-alert" class="hidden bg-yellow-100 border border-yellow-300 text-yellow-800 text-xs px-3 py-2 rounded mt-3 font-bold flex justify-between items-center">
-                <span class="animate-pulse">List Row Scan Mode...</span>
-                <button onclick="cancelRowScan()" class="text-yellow-600 underline">Cancel</button>
-            </div>
-            <div id="lpn-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-3">
-                <video id="lpn-video" autoplay playsinline muted></video>
-                <button onclick="captureLPN()" class="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white px-6 py-1.5 rounded-full text-sm font-bold shadow-lg border-2 border-white">
-                    Capture
-                </button>
-            </div>
-            <canvas id="lpn-canvas" class="hidden"></canvas>
-            <div id="lpn-preview-container" class="hidden mt-3 border rounded bg-slate-50 p-2 text-center">
-                <img id="lpn-preview" class="max-h-24 mx-auto rounded cursor-pointer" src="" onclick="openImageModal(this.src)" title="Tap to enlarge">
-            </div>
-            <div id="barcode-reader" class="hidden"></div>
-        </div>
-
-        <!-- Manual Input Form -->
-        <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
-            <div id="manual-input-area" class="grid grid-cols-2 gap-x-3 gap-y-2">
-                
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">Shipment ID</label>
-                    <input type="text" id="in-shipment" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">VRET ID</label>
-                    <input type="text" id="in-vret" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
-                </div>
-                
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">Date</label>
-                    <input type="date" id="in-date" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">ASIN</label>
-                    <input type="text" id="in-asin" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none uppercase" oninput="lookupASIN(this.value)">
-                </div>
-
-                <div class="col-span-2">
-                    <label class="block text-xs font-bold text-blue-600 mb-1">LPN #</label>
-                    <input type="text" id="in-lpn" class="w-full min-w-0 border-2 border-blue-300 rounded px-2 py-2 text-sm font-bold bg-blue-50 focus:bg-white outline-none shadow-inner">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">SKU</label>
-                    <input type="text" id="in-sku" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">S/N</label>
-                    <input type="text" id="in-sn" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">Reason</label>
-                    <input type="text" id="in-reason" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 mb-1">Condition</label>
-                    <div class="flex items-center bg-slate-50 border border-slate-300 rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white w-full">
-                        <input type="text" id="in-condition" class="flex-1 min-w-0 px-2 py-1.5 text-sm bg-transparent outline-none" placeholder="Type/Select">
-                        <select class="w-8 flex-shrink-0 bg-slate-200 text-slate-600 outline-none px-1 py-1.5 border-l border-slate-300 cursor-pointer text-center" onchange="if(this.value) { document.getElementById('in-condition').value=this.value; } this.selectedIndex=0;">
-                            <option value="" disabled selected>▼</option>
-                            <option value="New">New</option>
-                            <option value="Like New">Like New</option>
-                            <option value="Good">Good</option>
-                            <option value="Acceptable">Acceptable</option>
-                            <option value="Damaged">Damaged</option>
-                            <option value="Defective">Defective</option>
-                        </select>
+                    <!-- LPN Scanner Controls -->
+                    <div class="flex flex-col gap-1.5 md:gap-2 lg:pt-2 lg:border-t lg:border-slate-100">
+                        <div class="text-xs md:text-sm font-bold text-indigo-600 flex justify-between items-center">
+                            <span>LPN Scan</span>
+                            <span id="lpn-loading" class="hidden animate-pulse text-red-500 text-[10px] md:text-xs bg-red-50 px-2 py-0.5 rounded">Processing...</span>
+                        </div>
+                        <div class="flex gap-1.5 md:gap-2">
+                            <button onclick="startLPNCamera()" id="btn-lpn-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 md:py-2 rounded text-sm md:text-base font-bold shadow-sm hover:bg-slate-200 flex items-center justify-center gap-1">📷<span class="hidden md:inline text-xs font-normal">Camera</span></button>
+                            <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 md:py-2 rounded text-sm md:text-base font-bold shadow-sm hover:bg-slate-200 flex items-center justify-center gap-1">
+                                🖼️<span class="hidden md:inline text-xs font-normal">Upload</span><input type="file" accept="image/*" class="hidden" onchange="processBarcodeUpload(event)">
+                            </label>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="col-span-2">
-                    <label class="block text-xs font-bold text-slate-500 mb-1">Comments</label>
-                    <input type="text" id="in-comments" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 text-sm bg-slate-50 focus:bg-white outline-none">
+
+                <!-- OCR Camera/Preview Container -->
+                <div id="ocr-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-3 md:mt-4">
+                    <video id="ocr-video" autoplay playsinline muted></video>
+                    <button onclick="captureOCR()" class="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-red-500 text-white px-6 py-1.5 md:py-2 rounded-full text-sm md:text-base font-bold shadow-lg border-2 border-white hover:bg-red-600 transition-colors">
+                        Capture
+                    </button>
                 </div>
+                <canvas id="ocr-canvas" class="hidden"></canvas>
+                <div id="ocr-preview-container" class="hidden mt-3 md:mt-4 border rounded bg-slate-50 p-2 text-center">
+                    <p class="hidden md:block text-xs text-slate-500 mb-2">Slip Preview</p>
+                    <img id="ocr-preview" class="max-h-24 md:max-h-40 mx-auto rounded cursor-pointer hover:opacity-80 transition-opacity" src="" onclick="openImageModal(this.src)" title="Tap to enlarge">
+                </div>
+
+                <!-- LPN Camera/Preview Container -->
+                <div id="scanner-target-alert" class="hidden bg-yellow-100 border border-yellow-300 text-yellow-800 text-xs md:text-sm px-3 py-2 rounded mt-3 md:mt-4 font-bold flex justify-between items-center shadow-inner">
+                    <span class="animate-pulse">List Row Scan Mode...</span>
+                    <button onclick="cancelRowScan()" class="text-yellow-600 hover:text-yellow-800 underline">Cancel</button>
+                </div>
+                <div id="lpn-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-3 md:mt-4">
+                    <video id="lpn-video" autoplay playsinline muted></video>
+                    <button onclick="captureLPN()" class="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white px-6 py-1.5 md:py-2 rounded-full text-sm md:text-base font-bold shadow-lg border-2 border-white hover:bg-indigo-600 transition-colors">
+                        Capture
+                    </button>
+                </div>
+                <canvas id="lpn-canvas" class="hidden"></canvas>
+                <div id="lpn-preview-container" class="hidden mt-3 md:mt-4 border rounded bg-slate-50 p-2 text-center">
+                    <p class="hidden md:block text-xs text-slate-500 mb-2">LPN Preview</p>
+                    <img id="lpn-preview" class="max-h-24 md:max-h-40 mx-auto rounded cursor-pointer hover:opacity-80 transition-opacity" src="" onclick="openImageModal(this.src)" title="Tap to enlarge">
+                </div>
+                <div id="barcode-reader" class="hidden"></div>
             </div>
 
-            <div class="flex items-end gap-2 mt-4 pt-3 border-t border-slate-200">
-                <div class="w-1/4">
-                    <label class="block text-xs font-bold text-slate-700 mb-1 text-center">Qty</label>
-                    <input type="number" id="in-qty" value="1" min="1" class="w-full min-w-0 border border-slate-300 rounded px-1 py-1.5 font-bold text-center text-sm outline-none">
-                </div>
+            <!-- 【右カラム / スマホでは中部】 Manual Input Form -->
+            <div class="lg:col-span-8 bg-white p-3 md:p-5 lg:p-6 rounded-lg shadow-sm border border-slate-200 flex flex-col justify-between">
                 
-                <div class="w-1/4 flex flex-col items-center justify-center pb-1">
-                    <label class="block text-[10px] font-bold text-slate-700 mb-1 text-center leading-tight">Refurb</label>
-                    <input type="checkbox" id="in-refurbishable" checked class="w-6 h-6 rounded border-gray-300 text-blue-600 flex-shrink-0 cursor-pointer">
-                </div>
-                
-                <button onclick="addToList()" class="flex-1 bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 font-bold text-sm h-10 flex items-center justify-center flex-shrink-0">
-                    Add
-                </button>
-                <button onclick="clearForm()" class="w-12 bg-slate-200 text-slate-700 rounded shadow-sm hover:bg-slate-300 font-bold text-sm h-10 flex items-center justify-center flex-shrink-0">
-                    Clr
-                </button>
-            </div>
-        </div>
+                <div>
+                    <!-- PC向けタイトル -->
+                    <h2 class="hidden lg:flex text-lg font-bold mb-4 lg:mb-6 items-center gap-2 border-b pb-2">
+                        <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs">Step 3</span>
+                        Input Details
+                    </h2>
 
-        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-            <div class="p-2 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-                <span id="record-count" class="bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1 rounded-full">Total: 0</span>
+                    <!-- 【改善】PCでは3〜4カラム、スマホでは1〜2カラムへ可変。重なりを排除 -->
+                    <div id="manual-input-area" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-5 mb-2 md:mb-6">
+                        
+                        <!-- LPN # を最上部に配置（一番重要かつ長いのでPCでも2枠分取る） -->
+                        <div class="col-span-2 sm:col-span-3 lg:col-span-4 mb-1 md:mb-2">
+                            <label class="block text-xs md:text-sm font-bold text-blue-600 mb-1">LPN #</label>
+                            <input type="text" id="in-lpn" class="w-full min-w-0 border-2 border-blue-300 rounded px-3 py-2 md:py-2.5 text-sm md:text-base font-bold bg-blue-50 focus:bg-white outline-none shadow-inner">
+                        </div>
+
+                        <!-- DateとASINがスマホで重ならないようにスマホではcol-span-2も活用、またはmin-w-0で吸収 -->
+                        <div class="col-span-2 sm:col-span-1 lg:col-span-1">
+                            <label class="block text-xs md:text-sm font-bold text-slate-500 mb-1">Date</label>
+                            <input type="date" id="in-date" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 md:py-2 text-sm bg-slate-50 focus:bg-white outline-none">
+                        </div>
+                        <div class="col-span-2 sm:col-span-1 lg:col-span-1">
+                            <label class="block text-xs md:text-sm font-bold text-slate-500 mb-1">ASIN</label>
+                            <input type="text" id="in-asin" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 md:py-2 text-sm bg-slate-50 focus:bg-white outline-none uppercase" oninput="lookupASIN(this.value)">
+                        </div>
+                        <div class="col-span-2 sm:col-span-1 lg:col-span-1">
+                            <label class="block text-xs md:text-sm font-bold text-slate-500 mb-1">SKU</label>
+                            <input type="text" id="in-sku" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 md:py-2 text-sm bg-slate-50 focus:bg-white outline-none">
+                        </div>
+                        <div class="col-span-2 sm:col-span-1 lg:col-span-1">
+                            <label class="block text-xs md:text-sm font-bold text-slate-500 mb-1">S/N</label>
+                            <input type="text" id="in-sn" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 md:py-2 text-sm bg-slate-50 focus:bg-white outline-none font-mono">
+                        </div>
+
+                        <div class="col-span-1 sm:col-span-1 lg:col-span-1">
+                            <label class="block text-xs md:text-sm font-bold text-slate-500 mb-1">Shipment ID</label>
+                            <input type="text" id="in-shipment" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 md:py-2 text-sm bg-slate-50 focus:bg-white outline-none">
+                        </div>
+                        <div class="col-span-1 sm:col-span-1 lg:col-span-1">
+                            <label class="block text-xs md:text-sm font-bold text-slate-500 mb-1">VRET ID</label>
+                            <input type="text" id="in-vret" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 md:py-2 text-sm bg-slate-50 focus:bg-white outline-none">
+                        </div>
+                        
+                        <div class="col-span-1 sm:col-span-1 lg:col-span-1">
+                            <label class="block text-xs md:text-sm font-bold text-slate-500 mb-1">Reason</label>
+                            <input type="text" id="in-reason" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 md:py-2 text-sm bg-slate-50 focus:bg-white outline-none">
+                        </div>
+
+                        <!-- ハイブリッドCondition入力 -->
+                        <div class="col-span-1 sm:col-span-1 lg:col-span-1">
+                            <label class="block text-xs md:text-sm font-bold text-slate-500 mb-1">Condition</label>
+                            <div class="flex items-center bg-slate-50 border border-slate-300 rounded overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white w-full">
+                                <input type="text" id="in-condition" class="flex-1 min-w-0 px-2 py-1.5 md:py-2 text-sm bg-transparent outline-none" placeholder="Type/Select">
+                                <select class="w-8 md:w-10 flex-shrink-0 bg-slate-200 text-slate-600 outline-none px-1 py-1.5 md:py-2 border-l border-slate-300 cursor-pointer text-center" onchange="if(this.value) { document.getElementById('in-condition').value=this.value; } this.selectedIndex=0;">
+                                    <option value="" disabled selected>▼</option>
+                                    <option value="New">New</option>
+                                    <option value="Like New">Like New</option>
+                                    <option value="Good">Good</option>
+                                    <option value="Acceptable">Acceptable</option>
+                                    <option value="Damaged">Damaged</option>
+                                    <option value="Defective">Defective</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-span-2 sm:col-span-2 lg:col-span-4">
+                            <label class="block text-xs md:text-sm font-bold text-slate-500 mb-1">Comments</label>
+                            <input type="text" id="in-comments" class="w-full min-w-0 border border-slate-300 rounded px-2 py-1.5 md:py-2 text-sm bg-slate-50 focus:bg-white outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- アクション行（フレックスラップで画面幅に応じて最適化） -->
+                <div class="flex flex-wrap md:flex-nowrap items-end gap-2 md:gap-4 mt-2 md:mt-4 pt-3 border-t border-slate-200">
+                    <div class="w-16 md:w-24 flex-shrink-0">
+                        <label class="block text-xs md:text-sm font-bold text-slate-700 mb-1 text-center">Qty</label>
+                        <input type="number" id="in-qty" value="1" min="1" class="w-full min-w-0 border border-slate-300 rounded px-1 py-1.5 md:py-2 font-bold text-center text-sm md:text-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    
+                    <div class="flex flex-col items-center justify-center pb-1 md:pb-2 px-1">
+                        <label class="block text-[10px] md:text-xs font-bold text-slate-700 mb-1 text-center leading-tight">Refurb</label>
+                        <input type="checkbox" id="in-refurbishable" checked class="w-6 h-6 md:w-7 md:h-7 rounded border-gray-300 text-blue-600 flex-shrink-0 cursor-pointer">
+                    </div>
+                    
+                    <button onclick="addToList()" class="flex-1 bg-blue-600 text-white rounded shadow-sm hover:bg-blue-700 font-bold text-sm md:text-lg h-10 md:h-12 flex items-center justify-center flex-shrink-0 transition-colors">
+                        Add to List <span class="hidden md:inline text-blue-200 text-sm ml-2 font-normal">(Enter)</span>
+                    </button>
+                    <button onclick="clearForm()" class="w-14 md:w-20 bg-slate-200 text-slate-700 rounded shadow-sm hover:bg-slate-300 font-bold text-sm md:text-base h-10 md:h-12 flex items-center justify-center flex-shrink-0 transition-colors">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        </div> <!-- End of Grid -->
+
+        <!-- 【下部（フル幅）】 Management List Section -->
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden lg:mt-6">
+            <div class="p-2 md:p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                <div class="flex items-center gap-3 md:gap-4">
+                    <h2 class="text-sm md:text-lg font-bold text-slate-800">List</h2>
+                    <span id="record-count" class="bg-slate-200 text-slate-700 text-xs md:text-sm font-bold px-3 py-1 rounded-full">Total: 0</span>
+                </div>
                 
-                <div class="flex items-center gap-1 bg-white px-2 py-1 rounded shadow-sm border border-slate-200">
-                    <label class="text-[10px] font-bold text-slate-500">Zoom:</label>
-                    <input type="range" id="table-zoom-slider" min="50" max="150" value="100" class="w-16 h-1 bg-slate-200 rounded-lg appearance-none" oninput="changeTableZoom(this.value)">
+                <div class="flex items-center gap-2 bg-white px-2 py-1 md:px-3 md:py-1.5 rounded shadow-sm border border-slate-200">
+                    <label class="text-[10px] md:text-xs font-bold text-slate-500">Zoom:</label>
+                    <input type="range" id="table-zoom-slider" min="50" max="150" value="100" class="w-16 md:w-24 h-1 bg-slate-200 rounded-lg appearance-none" oninput="changeTableZoom(this.value)">
                 </div>
             </div>
             
             <div class="overflow-x-auto">
-                <table id="data-table" class="w-full text-left text-xs whitespace-nowrap transform-origin-top-left transition-all duration-200">
+                <table id="data-table" class="w-full text-left text-xs md:text-sm whitespace-nowrap transform-origin-top-left transition-all duration-200">
                     <thead class="bg-slate-100 text-slate-600 uppercase font-bold border-b">
                         <tr>
-                            <th class="px-2 py-2 min-w-[40px]">No</th>
-                            <th class="px-2 py-2 min-w-[120px]">Entry Date</th>
-                            <th class="px-2 py-2 min-w-[130px]">Shipment ID</th>
-                            <th class="px-2 py-2 min-w-[130px]">VRET ID</th>
-                            <th class="px-2 py-2 min-w-[170px]">LPN #</th>
-                            <th class="px-2 py-2 min-w-[120px]">Process Date</th>
-                            <th class="px-2 py-2 min-w-[120px]">Reason</th>
-                            <th class="px-2 py-2 min-w-[120px]">ASIN</th>
-                            <th class="px-2 py-2 min-w-[130px]">SKU</th>
-                            <th class="px-2 py-2 min-w-[140px]">S/N</th>
-                            <th class="px-2 py-2 min-w-[150px]">Condition</th>
-                            <th class="px-2 py-2 min-w-[160px]">Comments</th>
-                            <th class="px-2 py-2 min-w-[90px] text-center">Refurb</th>
-                            <th class="px-2 py-2 min-w-[90px] text-center">Act</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[40px]">No</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[120px]">Entry Date</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[130px]">Shipment ID</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[130px]">VRET ID</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[180px]">LPN #</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[120px]">Process Date</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[120px]">Reason</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[120px]">ASIN</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[130px]">SKU</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[140px]">S/N</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[150px]">Condition</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[160px]">Comments</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[90px] text-center">Refurb</th>
+                            <th class="px-2 py-2 md:px-4 md:py-3 min-w-[90px] text-center">Act</th>
                         </tr>
                     </thead>
                     <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700">
@@ -276,7 +315,7 @@
                 </table>
             </div>
             
-            <div id="empty-state" class="p-6 text-center text-sm text-slate-400 font-bold">
+            <div id="empty-state" class="p-6 md:p-10 text-center text-sm md:text-base text-slate-400 font-bold">
                 No records yet.
             </div>
         </div>
@@ -304,7 +343,6 @@
         let records = JSON.parse(localStorage.getItem('returnRecords')) || [];
         let recordIdCounter = records.length > 0 ? Math.max(...records.map(r => r.id)) + 1 : 1; 
         let scanTargetRowId = null;
-
         let html5QrCode = null;
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -316,7 +354,6 @@
                 }
             });
 
-            // 【改善】LPNスキャンエンジンをCode 128 (GS1-128/EAN-128) のみに極限まで制限
             html5QrCode = new Html5Qrcode("barcode-reader", {
                 formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128 ]
             });
@@ -344,10 +381,10 @@
             const tbody = document.getElementById('asin-master-list');
             tbody.innerHTML = Object.keys(asinToSkuMaster).map(asin => `
                 <tr>
-                    <td class="px-2 py-1 font-mono">${asin}</td>
-                    <td class="px-2 py-1">${asinToSkuMaster[asin]}</td>
-                    <td class="px-2 py-1 text-right">
-                        <button onclick="deleteAsinMaster('${asin}')" class="text-red-500 font-bold text-lg leading-none">&times;</button>
+                    <td class="px-2 py-1 md:px-3 md:py-2 font-mono">${asin}</td>
+                    <td class="px-2 py-1 md:px-3 md:py-2">${asinToSkuMaster[asin]}</td>
+                    <td class="px-2 py-1 md:px-3 md:py-2 text-right">
+                        <button onclick="deleteAsinMaster('${asin}')" class="text-red-500 hover:text-red-700 font-bold text-lg md:text-xl leading-none">&times;</button>
                     </td>
                 </tr>
             `).join('');
@@ -379,7 +416,7 @@
         function cancelRowScan() {
             scanTargetRowId = null;
             document.getElementById('scanner-target-alert').classList.add('hidden');
-            if (lpnStream) startLPNCamera(); // Stop if running
+            if (lpnStream) startLPNCamera(); 
         }
 
         function addToList() {
@@ -484,26 +521,26 @@
             
             tbody.innerHTML = records.map((r, index) => `
                 <tr class="hover:bg-blue-50 transition-colors">
-                    <td class="px-2 py-1 text-slate-500 font-bold">${index + 1}</td>
-                    <td class="px-2 py-1"><input type="date" value="${r.entryDate}" class="table-input" onchange="updateRecord(${r.id}, 'entryDate', this.value)"></td>
-                    <td class="px-2 py-1"><input type="text" value="${r.shipmentId}" class="table-input" onchange="updateRecord(${r.id}, 'shipmentId', this.value)"></td>
-                    <td class="px-2 py-1"><input type="text" value="${r.vretId}" class="table-input" onchange="updateRecord(${r.id}, 'vretId', this.value)"></td>
+                    <td class="px-2 py-1 md:px-4 md:py-2 text-slate-500 font-bold">${index + 1}</td>
+                    <td class="px-2 py-1 md:px-4 md:py-2"><input type="date" value="${r.entryDate}" class="table-input" onchange="updateRecord(${r.id}, 'entryDate', this.value)"></td>
+                    <td class="px-2 py-1 md:px-4 md:py-2"><input type="text" value="${r.shipmentId}" class="table-input" onchange="updateRecord(${r.id}, 'shipmentId', this.value)"></td>
+                    <td class="px-2 py-1 md:px-4 md:py-2"><input type="text" value="${r.vretId}" class="table-input" onchange="updateRecord(${r.id}, 'vretId', this.value)"></td>
                     
-                    <td class="px-2 py-1 flex items-center gap-1">
+                    <td class="px-2 py-1 md:px-4 md:py-2 flex items-center gap-1">
                         <input type="text" value="${r.lpn}" class="table-input text-blue-600 font-bold w-full" onchange="updateRecord(${r.id}, 'lpn', this.value)">
                         <button onclick="prepareRowScan(${r.id})" class="text-slate-400 hover:text-blue-600 bg-white border px-1.5 py-1 rounded shadow-sm text-xs flex-shrink-0" title="Scan LPN directly">📷</button>
                     </td>
 
-                    <td class="px-2 py-1"><input type="date" value="${r.processDate}" class="table-input" onchange="updateRecord(${r.id}, 'processDate', this.value)"></td>
-                    <td class="px-2 py-1"><input type="text" value="${r.reason}" class="table-input" onchange="updateRecord(${r.id}, 'reason', this.value)"></td>
-                    <td class="px-2 py-1"><input type="text" value="${r.asin}" class="table-input font-mono" onchange="updateRecord(${r.id}, 'asin', this.value)"></td>
-                    <td class="px-2 py-1"><input type="text" value="${r.sku}" class="table-input font-bold" onchange="updateRecord(${r.id}, 'sku', this.value)"></td>
-                    <td class="px-2 py-1"><input type="text" value="${r.sn}" class="table-input font-mono" onchange="updateRecord(${r.id}, 'sn', this.value)"></td>
+                    <td class="px-2 py-1 md:px-4 md:py-2"><input type="date" value="${r.processDate}" class="table-input" onchange="updateRecord(${r.id}, 'processDate', this.value)"></td>
+                    <td class="px-2 py-1 md:px-4 md:py-2"><input type="text" value="${r.reason}" class="table-input" onchange="updateRecord(${r.id}, 'reason', this.value)"></td>
+                    <td class="px-2 py-1 md:px-4 md:py-2"><input type="text" value="${r.asin}" class="table-input font-mono" onchange="updateRecord(${r.id}, 'asin', this.value)"></td>
+                    <td class="px-2 py-1 md:px-4 md:py-2"><input type="text" value="${r.sku}" class="table-input font-bold" onchange="updateRecord(${r.id}, 'sku', this.value)"></td>
+                    <td class="px-2 py-1 md:px-4 md:py-2"><input type="text" value="${r.sn}" class="table-input font-mono" onchange="updateRecord(${r.id}, 'sn', this.value)"></td>
                     
-                    <td class="px-2 py-1">
+                    <td class="px-2 py-1 md:px-4 md:py-2">
                         <div class="flex items-center bg-white border border-transparent hover:border-slate-300 rounded overflow-hidden w-full">
-                            <input type="text" value="${r.condition}" class="flex-1 min-w-0 px-2 py-1 text-sm outline-none bg-transparent" onchange="updateRecord(${r.id}, 'condition', this.value)">
-                            <select class="w-6 flex-shrink-0 text-xs bg-slate-100 text-slate-500 outline-none border-l cursor-pointer text-center" onchange="if(this.value) { updateRecord(${r.id}, 'condition', this.value); renderTable(); }">
+                            <input type="text" value="${r.condition}" class="flex-1 min-w-0 px-2 py-1 text-xs md:text-sm outline-none bg-transparent" onchange="updateRecord(${r.id}, 'condition', this.value)">
+                            <select class="w-6 md:w-8 flex-shrink-0 text-xs bg-slate-100 text-slate-500 outline-none border-l cursor-pointer text-center" onchange="if(this.value) { updateRecord(${r.id}, 'condition', this.value); renderTable(); }">
                                 <option value="" disabled selected>▼</option>
                                 <option value="New">New</option>
                                 <option value="Like New">Like New</option>
@@ -515,13 +552,13 @@
                         </div>
                     </td>
 
-                    <td class="px-2 py-1"><input type="text" value="${r.comments}" class="table-input" onchange="updateRecord(${r.id}, 'comments', this.value)"></td>
-                    <td class="px-2 py-1 text-center">
+                    <td class="px-2 py-1 md:px-4 md:py-2"><input type="text" value="${r.comments}" class="table-input" onchange="updateRecord(${r.id}, 'comments', this.value)"></td>
+                    <td class="px-2 py-1 md:px-4 md:py-2 text-center">
                         <input type="checkbox" class="table-checkbox mx-auto" ${r.refurbishable ? 'checked' : ''} onchange="updateRecord(${r.id}, 'refurbishable', this.checked)">
                     </td>
-                    <td class="px-2 py-1 text-center flex justify-center gap-1">
-                        <button onclick="copyRow(${r.id})" class="text-blue-500 bg-white border p-1 rounded shadow-sm" title="Duplicate">📋</button>
-                        <button onclick="deleteRecord(${r.id})" class="text-red-500 bg-white border p-1 rounded shadow-sm" title="Delete">🗑️</button>
+                    <td class="px-2 py-1 md:px-4 md:py-2 text-center flex justify-center gap-1 md:gap-2">
+                        <button onclick="copyRow(${r.id})" class="text-blue-500 bg-white border p-1 rounded shadow-sm hover:bg-slate-50" title="Duplicate">📋</button>
+                        <button onclick="deleteRecord(${r.id})" class="text-red-500 bg-white border p-1 rounded shadow-sm hover:bg-slate-50" title="Delete">🗑️</button>
                     </td>
                 </tr>
             `).join('');
@@ -539,7 +576,7 @@
                 ocrStream.getTracks().forEach(track => track.stop());
                 ocrStream = null;
                 container.classList.add('hidden');
-                btn.innerHTML = "📷";
+                btn.innerHTML = `📷<span class="hidden md:inline text-xs font-normal ml-1">Camera</span>`;
                 return;
             }
 
@@ -549,7 +586,7 @@
                 });
                 video.srcObject = ocrStream;
                 container.classList.remove('hidden');
-                btn.innerHTML = "🛑";
+                btn.innerHTML = `🛑<span class="hidden md:inline text-xs font-normal ml-1">Stop</span>`;
             } catch (err) {
                 alert("Camera access denied.");
             }
@@ -566,7 +603,7 @@
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             ctx.filter = 'none';
             
-            startOCRCamera(); // 停止
+            startOCRCamera(); 
             executeOCR(canvas.toDataURL('image/jpeg'));
         }
 
@@ -602,9 +639,11 @@
             document.getElementById('ocr-preview').src = imageSrc;
             document.getElementById('ocr-preview-container').classList.remove('hidden');
             document.getElementById('ocr-loading').classList.remove('hidden');
+            document.getElementById('ocr-loading').classList.add('inline-block'); // Tailwind hack
             
             Tesseract.recognize(imageSrc, 'eng').then(({ data: { text } }) => {
                 document.getElementById('ocr-loading').classList.add('hidden');
+                document.getElementById('ocr-loading').classList.remove('inline-block');
                 
                 const patterns = {
                     shipment: /Shipment\s*ID[:\s]*(\d+)/i,
@@ -630,6 +669,7 @@
                 }
             }).catch(err => {
                 document.getElementById('ocr-loading').classList.add('hidden');
+                document.getElementById('ocr-loading').classList.remove('inline-block');
                 alert('OCR Error: ' + err.message);
             });
         }
@@ -646,7 +686,7 @@
                 lpnStream.getTracks().forEach(track => track.stop());
                 lpnStream = null;
                 container.classList.add('hidden');
-                btn.innerHTML = "📷";
+                btn.innerHTML = `📷<span class="hidden md:inline text-xs font-normal ml-1">Camera</span>`;
                 return;
             }
 
@@ -656,7 +696,7 @@
                 });
                 video.srcObject = lpnStream;
                 container.classList.remove('hidden');
-                btn.innerHTML = "🛑";
+                btn.innerHTML = `🛑<span class="hidden md:inline text-xs font-normal ml-1">Stop</span>`;
             } catch (err) {
                 alert("Camera access denied.");
             }
@@ -673,11 +713,12 @@
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             ctx.filter = 'none';
 
-            startLPNCamera(); // カメラ停止
+            startLPNCamera(); 
             
             document.getElementById('lpn-preview').src = canvas.toDataURL('image/jpeg');
             document.getElementById('lpn-preview-container').classList.remove('hidden');
             document.getElementById('lpn-loading').classList.remove('hidden');
+            document.getElementById('lpn-loading').classList.add('inline-block');
 
             canvas.toBlob(blob => {
                 if (!blob) return;
@@ -698,6 +739,7 @@
             reader.readAsDataURL(file);
 
             document.getElementById('lpn-loading').classList.remove('hidden');
+            document.getElementById('lpn-loading').classList.add('inline-block');
             processBarcodeFile(file);
             event.target.value = ''; 
         }
@@ -706,10 +748,12 @@
             html5QrCode.scanFile(file, true)
                 .then(decodedText => {
                     document.getElementById('lpn-loading').classList.add('hidden');
+                    document.getElementById('lpn-loading').classList.remove('inline-block');
                     handleBarcodeResult(decodedText);
                 })
                 .catch(err => {
                     document.getElementById('lpn-loading').classList.add('hidden');
+                    document.getElementById('lpn-loading').classList.remove('inline-block');
                     alert("Barcode not found. Make sure only the LPN (Code 128) is in frame.");
                 });
         }
