@@ -9,6 +9,7 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
+        /* iOS Safariでの自動ズームを防ぐため16pxを下限に */
         input, select, button {
             font-size: 16px; 
         }
@@ -30,8 +31,7 @@
             height: 1.25rem;
             cursor: pointer;
         }
-        /* 動画プレビューの統一 */
-        video {
+        #barcode-reader video, #ocr-video, #lpn-video {
             width: 100% !important;
             max-height: 40vh;
             object-fit: cover;
@@ -97,9 +97,9 @@
 
     <div class="max-w-3xl mx-auto space-y-3 p-2">
         
+        <!-- Scanners Area -->
         <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
             <div class="grid grid-cols-2 gap-3">
-                
                 <!-- Slip OCR Controls -->
                 <div class="flex flex-col gap-1.5">
                     <div class="text-xs font-bold text-blue-600 flex justify-between">
@@ -121,7 +121,6 @@
                         <span id="lpn-loading" class="hidden animate-pulse text-red-500 text-[10px]">Processing...</span>
                     </div>
                     <div class="flex gap-1.5">
-                        <!-- 【改善】LPNもキャプチャ形式に変更 -->
                         <button onclick="startLPNCamera()" id="btn-lpn-cam" class="flex-1 bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">📷</button>
                         <label class="flex-1 cursor-pointer bg-slate-100 border border-slate-300 py-1.5 rounded text-sm font-bold shadow-sm flex items-center justify-center gap-1">
                             🖼️<input type="file" accept="image/*" class="hidden" onchange="processBarcodeUpload(event)">
@@ -147,7 +146,6 @@
                 <span class="animate-pulse">List Row Scan Mode...</span>
                 <button onclick="cancelRowScan()" class="text-yellow-600 underline">Cancel</button>
             </div>
-            <!-- 【改善】LPN用のキャプチャコンテナ -->
             <div id="lpn-video-container" class="relative w-full rounded overflow-hidden bg-black hidden mt-3">
                 <video id="lpn-video" autoplay playsinline muted></video>
                 <button onclick="captureLPN()" class="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white px-6 py-1.5 rounded-full text-sm font-bold shadow-lg border-2 border-white">
@@ -158,9 +156,10 @@
             <div id="lpn-preview-container" class="hidden mt-3 border rounded bg-slate-50 p-2 text-center">
                 <img id="lpn-preview" class="max-h-24 mx-auto rounded cursor-pointer" src="" onclick="openImageModal(this.src)" title="Tap to enlarge">
             </div>
-
+            <div id="barcode-reader" class="hidden"></div>
         </div>
 
+        <!-- Manual Input Form -->
         <div class="bg-white p-3 rounded-lg shadow-sm border border-slate-200">
             <div id="manual-input-area" class="grid grid-cols-2 gap-x-3 gap-y-2">
                 
@@ -306,7 +305,6 @@
         let recordIdCounter = records.length > 0 ? Math.max(...records.map(r => r.id)) + 1 : 1; 
         let scanTargetRowId = null;
 
-        // html5QrCode engine (now only used for static image processing)
         let html5QrCode = null;
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -317,14 +315,10 @@
                     addToList();
                 }
             });
-            // Barcode engine init
+
+            // 【改善】LPNスキャンエンジンをCode 128 (GS1-128/EAN-128) のみに極限まで制限
             html5QrCode = new Html5Qrcode("barcode-reader", {
-                formatsToSupport: [
-                    Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.CODE_39,
-                    Html5QrcodeSupportedFormats.EAN_13,
-                    Html5QrcodeSupportedFormats.UPC_A
-                ]
+                formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128 ]
             });
         });
 
@@ -379,7 +373,6 @@
             scanTargetRowId = rowId;
             document.getElementById('scanner-target-alert').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' }); 
-            // 行のカメラボタンを押したらLPN用カメラを起動
             startLPNCamera();
         }
 
@@ -534,7 +527,7 @@
             `).join('');
         }
 
-        // --- 【改善】OCR Logic (画像前処理フィルタ導入) ---
+        // --- OCR Logic ---
         let ocrStream = null;
 
         async function startOCRCamera() {
@@ -569,10 +562,9 @@
             canvas.height = video.videoHeight;
             
             const ctx = canvas.getContext('2d');
-            // 【改善】精度のための画像前処理：白黒化とコントラスト強調
             ctx.filter = 'grayscale(100%) contrast(150%)';
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            ctx.filter = 'none'; // リセット
+            ctx.filter = 'none';
             
             startOCRCamera(); // 停止
             executeOCR(canvas.toDataURL('image/jpeg'));
@@ -589,7 +581,6 @@
                     canvas.width = img.width;
                     canvas.height = img.height;
                     const ctx = canvas.getContext('2d');
-                    // アップロード画像にも前処理を適用
                     ctx.filter = 'grayscale(100%) contrast(150%)';
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     ctx.filter = 'none';
@@ -643,7 +634,7 @@
             });
         }
 
-        // --- 【改善】Barcode Logic (LPN) キャプチャ形式への変更 ---
+        // --- Barcode Logic (LPN) ---
         let lpnStream = null;
 
         async function startLPNCamera() {
@@ -678,19 +669,16 @@
             canvas.height = video.videoHeight;
             
             const ctx = canvas.getContext('2d');
-            // バーコードも白黒・コントラスト強調で読み取りやすく
             ctx.filter = 'grayscale(100%) contrast(120%)';
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             ctx.filter = 'none';
 
             startLPNCamera(); // カメラ停止
             
-            // プレビュー表示
             document.getElementById('lpn-preview').src = canvas.toDataURL('image/jpeg');
             document.getElementById('lpn-preview-container').classList.remove('hidden');
             document.getElementById('lpn-loading').classList.remove('hidden');
 
-            // ファイル化して解析へ
             canvas.toBlob(blob => {
                 if (!blob) return;
                 const file = new File([blob], "barcode.jpg", { type: "image/jpeg" });
@@ -702,7 +690,6 @@
             const file = event.target.files[0];
             if (!file) return;
             
-            // プレビュー表示
             const reader = new FileReader();
             reader.onload = e => {
                 document.getElementById('lpn-preview').src = e.target.result;
@@ -723,7 +710,7 @@
                 })
                 .catch(err => {
                     document.getElementById('lpn-loading').classList.add('hidden');
-                    alert("Barcode not found in the captured image. Please try again.");
+                    alert("Barcode not found. Make sure only the LPN (Code 128) is in frame.");
                 });
         }
 
